@@ -3,6 +3,26 @@
 Die zwei Grenzen, an denen probe.ts discord.js faked – der Rest von
 discord.js läuft echt. Siehe `CLAUDE.md` für das Kern-Prinzip.
 
+```mermaid
+flowchart LR
+    Test["Testcode"]
+
+    subgraph Probe["probe.ts – hier greifen wir ein"]
+        direction TB
+        GA["GatewayAdapter<br/>fake @discordjs/ws"]
+        RA["RestAdapter<br/>fake @discordjs/rest"]
+    end
+
+    Client["discord.js Client<br/>+ dein Bot-Code"]
+    Discord[("Discord")]
+
+    Test -->|"① injectDispatch()/emit()/slashCommand()"| GA
+    GA -->|"② Gateway-Event"| Client
+    Client -->|"③ REST-Call (reply/send/...)"| RA
+    RA -->|"④ capturedRequests()/lastReply()"| Test
+    Client -.->|"nie kontaktiert"| Discord
+```
+
 ## `gateway-adapter.ts` – eingehend
 
 `GatewayAdapter` implementiert `@discordjs/ws`'s `IShardingStrategy` und
@@ -43,6 +63,7 @@ transport-boundary-check/SKILL.md`.
 
 **Nie** eine discord.js-Model-Klasse selbst mocken. Immer nur rohe
 Gateway-/REST-Payloads injizieren bzw. abfangen und discord.js echte
-Objekte daraus bauen lassen. Adapter bleiben intern – nicht Teil der
-öffentlichen API (`src/index.ts` exportiert nur `createProbe`/`Probe`
-aus `../core/probe.js`, nie `GatewayAdapter`/`RestAdapter` direkt).
+Objekte daraus bauen lassen. Adapter bleiben intern – `GatewayAdapter`/
+`RestAdapter` selbst sind nie Teil der öffentlichen API (`src/index.ts`
+exportiert Fixture-Builder, Invocation-Typen etc., aber nie die Adapter
+direkt).

@@ -32,6 +32,26 @@ discord.js – `@discordjs/ws` (eingehende Gateway-Events) und
 `@discordjs/rest` (ausgehende REST-Calls). discord.js baut daraus selbst
 echte Model-Objekte; dein Bot-Code läuft unverändert.
 
+```mermaid
+flowchart LR
+    Test["Testcode"]
+
+    subgraph Probe["probe.ts – hier greifen wir ein"]
+        direction TB
+        GA["GatewayAdapter<br/>fake @discordjs/ws"]
+        RA["RestAdapter<br/>fake @discordjs/rest"]
+    end
+
+    Client["discord.js Client<br/>+ dein Bot-Code"]
+    Discord[("Discord")]
+
+    Test -->|"① injectDispatch()/emit()/slashCommand()"| GA
+    GA -->|"② Gateway-Event"| Client
+    Client -->|"③ REST-Call (reply/send/...)"| RA
+    RA -->|"④ capturedRequests()/lastReply()"| Test
+    Client -.->|"nie kontaktiert"| Discord
+```
+
 Details: `src/transport/README.md`.
 
 ## Installation
