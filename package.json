@@ -11,6 +11,13 @@
     "vitest",
     "mock"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GalaxyBotTeam/probe.ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GalaxyBotTeam/probe.ts/issues"
+  },
   "author": "GalaxyBotTeam",
   "license": "MIT",
   "type": "module",
