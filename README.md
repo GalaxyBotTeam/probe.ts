@@ -1,68 +1,57 @@
-# 🛰️ probe.ts
+![Probe Logo](https://s3.galaxybot.app/media/probe/readmeBanner.png?v=2)
 
-Testframework für [discord.js](https://discord.js.org)-Bots. Testet Slash
-Commands, Buttons/Select-Menus/Modals und Gateway-Events (Member-Join,
-Message-Create, ...), **ohne** sich mit Discord zu verbinden – schnell,
-deterministisch, integriert in [Vitest](https://vitest.dev).
+probe.ts is a lightweight testing framework for [discord.js](https://discord.js.org/) bots, built to make testing commands, components, and events fast, deterministic, and completely offline.
 
-Teil des GalaxyBot-Ökosystems.
+## Overview
 
-## Warum probe.ts?
+Testing Discord bots today is painful: either you don't test at all (and find bugs live, in front of real users), or you hand-mock every discord.js model — fragile, and it breaks on every discord.js update.
 
-Discord-Bots zu testen ist heute unangenehm: entweder gar nicht (Bugs
-fallen erst live bei echten Nutzern auf), oder man baut jedes
-discord.js-Model von Hand nach – fragil, und bricht bei jedem
-discord.js-Update aufs Neue.
+probe.ts solves this at the transport layer instead: it fakes only the two boundaries of discord.js (`@discordjs/ws` and `@discordjs/rest`), never the model classes. discord.js builds real `Message`/`Interaction`/`GuildMember` objects from the faked data, so your bot code runs completely unmodified — no test Discord server, no network, tests run in milliseconds. Built for hobby and small-team bot developers who want reliability without a steep learning curve.
 
-probe.ts löst das am Transport-Layer (siehe Kern-Prinzip unten): Commands
-und Events lassen sich testen wie normale Funktionen, ohne Netzwerk, ohne
-Test-Discord-Server, in Millisekunden statt Sekunden. Gebaut für Hobby-
-und Freizeit-Bot-Entwickler mit TypeScript + discord.js – einfacher
-Einstieg, vertraute Tools, keine steile Lernkurve.
+## Key Features
 
-**Kein Ersatz für:** Vitest (wir integrieren uns, ersetzen nichts), echtes
-End-to-End-Testing gegen die Discord-API (anderes Problem), andere
-Bot-Libraries als discord.js (erstmal).
-
-## Kern-Prinzip
-
-probe.ts mockt discord.js **nie** an den Model-Klassen (`Message`,
-`Interaction`, `Guild`, ...). Stattdessen faked es nur die zwei Grenzen von
-discord.js – `@discordjs/ws` (eingehende Gateway-Events) und
-`@discordjs/rest` (ausgehende REST-Calls). discord.js baut daraus selbst
-echte Model-Objekte; dein Bot-Code läuft unverändert.
-
-```mermaid
-flowchart LR
-    Test["Testcode"]
-
-    subgraph Probe["probe.ts – hier greifen wir ein"]
-        direction TB
-        GA["GatewayAdapter<br/>fake @discordjs/ws"]
-        RA["RestAdapter<br/>fake @discordjs/rest"]
-    end
-
-    Client["discord.js Client<br/>+ dein Bot-Code"]
-    Discord[("Discord")]
-
-    Test -->|"① injectDispatch()/emit()/slashCommand()"| GA
-    GA -->|"② Gateway-Event"| Client
-    Client -->|"③ REST-Call (reply/send/...)"| RA
-    RA -->|"④ capturedRequests()/lastReply()"| Test
-    Client -.->|"nie kontaktiert"| Discord
-```
-
-Details: `src/transport/README.md`.
+- Test **Slash Commands** — including options, `deferReply()`/`editReply()`
+- Test **Buttons**, **Select Menus**, and **Modals** — including discord.js's own collectors (`awaitMessageComponent()`, `awaitModalSubmit()`, ...)
+- Test **Gateway Events** — member join/leave, message create/delete, reactions, prefix commands
+- Evaluate **Components V2 containers** with `extractText()` — no manual tree-walking
+- **Seamless integration** with discord.js — real model objects, no hand-written mocks
+- **Vitest-native** — no separate test runner or assertion library to learn
+- Fixture builders with sensible defaults, everything overridable
+- Open-source and actively developed
 
 ## Installation
 
 ```bash
 npm install --save-dev probe.ts vitest
+# or
+yarn add -D probe.ts vitest
 ```
 
-## Quickstart
+## Quick Start Example
+
+### Bot Setup
 
 ```ts
+// bot.ts
+import { Client, GatewayIntentBits } from "discord.js";
+
+export function createPingBot(): Client {
+  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+  client.on("interactionCreate", async (interaction) => {
+    if (interaction.isChatInputCommand() && interaction.commandName === "ping") {
+      await interaction.reply("🏓 Pong!");
+    }
+  });
+
+  return client;
+}
+```
+
+### Test Setup
+
+```ts
+// bot.test.ts
 import { createProbe } from "probe.ts";
 import { createPingBot } from "./bot.js";
 
@@ -76,13 +65,7 @@ expect(probe.lastReply()).toMatchObject({ content: "🏓 Pong!" });
 await probe.teardown();
 ```
 
-Mit Optionen:
-
-```ts
-await probe.slashCommand("echo").withOptions({ message: "hallo" }).invoke();
-```
-
-## Gateway-Events testen
+## Testing Gateway Events
 
 ```ts
 probe.emit("guildMemberAdd", { user: { username: "anna" } });
@@ -92,97 +75,72 @@ await vi.waitFor(() => {
 });
 ```
 
-Unterstützt aktuell `guildMemberAdd`, `guildMemberRemove`,
-`messageCreate`, `messageDelete`, `messageReactionAdd`,
-`messageReactionRemove` – Prefix-Commands (`!ping`) sind dabei kein
-eigenes Event, sondern ganz normales `messageCreate` (siehe
-`docs/testing-event-handlers.md`). Ausführlich (inkl. der versteckten
-discord.js-Regel, dass Guild/Channel/Member/Message vorher im Cache
-bekannt sein müssen): `docs/testing-event-handlers.md`.
+Supports `guildMemberAdd`/`Remove`, `messageCreate`/`Delete`, and `messageReactionAdd`/`Remove`. Prefix commands (`!ping`) aren't a separate event — they're just a `messageCreate` with matching content. Full guide: [`docs/testing-event-handlers.md`](docs/testing-event-handlers.md).
 
-## Buttons, Select Menus, Modals testen
+## Testing Message Components
 
 ```ts
 await probe.button("open-feedback-modal").click();
-await probe.selectMenu("color-select").withValues(["gruen"]).select();
-await probe.modal("feedback-modal").withFields({ "feedback-text": "mehr Kaffee bitte" }).submit();
+await probe.selectMenu("color-select").withValues(["green"]).select();
+await probe.modal("feedback-modal").withFields({ "feedback-text": "more coffee please" }).submit();
 
 expect(probe.lastModal()).toMatchObject({ customId: "feedback-modal" });
 ```
 
-Funktioniert auch mit discord.js' eigenen Collectors
-(`awaitMessageComponent()`, `awaitModalSubmit()`, ...). Ausführlich:
-`docs/testing-message-components.md`.
+Works with discord.js's own collectors too. Full guide: [`docs/testing-message-components.md`](docs/testing-message-components.md).
 
-Antwortet dein Bot mit einem Components-V2-Container statt einfachem
-`content`? `extractText(reply)` liest den sichtbaren Text unabhängig vom
-Stil aus:
+## How It Works
 
-```ts
-expect(extractText(probe.lastReply()!)).toBe("🟢 Alle Systeme laufen\nUptime: 3 Tage");
+probe.ts fakes exactly two boundaries — everything else is real discord.js:
+
+```mermaid
+flowchart LR
+    Test["Test code"]
+
+    subgraph Probe["probe.ts – this is where we intervene"]
+        direction TB
+        GA["GatewayAdapter<br/>fake @discordjs/ws"]
+        RA["RestAdapter<br/>fake @discordjs/rest"]
+    end
+
+    Client["discord.js Client<br/>+ your bot code"]
+    Discord[("Discord")]
+
+    Test -->|"① injectDispatch()/emit()/slashCommand()"| GA
+    GA -->|"② Gateway event"| Client
+    Client -->|"③ REST call (reply/send/...)"| RA
+    RA -->|"④ capturedRequests()/lastReply()"| Test
+    Client -.->|"never contacted"| Discord
 ```
 
-## Beispiele
+### Terminology
 
-- `examples/ping-bot/` – Slash Commands (`ping`/`echo`/`slow`,
-  inkl. `deferReply()`/`editReply()`)
-- `examples/welcome-bot/` – Gateway-Events (Willkommensnachricht bei
-  `guildMemberAdd`)
-- `examples/feedback-bot/` – Button → Modal → Submit (mit Collectors) +
-  Select Menu
-- `examples/reaction-role-bot/` – Prefix-Command + Reaction-Role
-  (`messageReactionAdd`/`messageReactionRemove`)
-- `examples/status-bot/` – Antwort als Components-V2-Container
-  (`extractText()`)
+- **Probe**: the object returned by `createProbe(client)` — your interface to inject events and read captured REST calls
+- **GatewayAdapter**: fake `@discordjs/ws` — injects raw Gateway dispatch payloads
+- **RestAdapter**: fake `@discordjs/rest` — captures outgoing REST calls instead of sending them
+- **Fixture**: a builder that produces a raw Gateway/REST payload with sensible, overridable defaults
 
-## Architektur
+Architecture deep-dive: every `src/` subfolder has its own `README.md`; overall contributor context lives in `CLAUDE.md`.
 
-```
-src/
-  core/           Probe-Instanz, Lifecycle – der öffentliche Einstiegspunkt
-  transport/      Fake-WS-Layer + Fake-REST-Layer (die einzigen zwei Mocks)
-  fixtures/       Builder für rohe Gateway-/REST-Payloads
-  events/         probe.emit() – generische Gateway-Events
-  interactions/   Slash-Command-/Button-/Select-Menu-/Modal-Helfer
-```
+## Integration with discord.js
 
-Jeder Ordner hat sein eigenes `README.md` mit Details zu Zweck,
-Konventionen und Erweiterungspunkten. Gesamtkontext für Mitentwickler
-(auch KI-Agenten): `CLAUDE.md`.
+probe.ts works with discord.js v14+. You can integrate it without modifying your existing command or event handling structure — your bot code runs completely unchanged.
 
-## Umfang
+## Current Status
 
-**Implementiert:**
+**Implemented:** Slash Commands, Buttons/Select Menus (string-select)/Modals with collectors, the gateway events listed above, Components V2 container evaluation.
 
-- Slash Commands, inkl. Optionen, `deferReply()`/`editReply()`
-- Buttons, Select Menus (String-Select), Modals – inkl. discord.js'
-  eigener Collectors (`awaitMessageComponent()`, `awaitModalSubmit()`, ...)
-- Gateway-Events: `guildMemberAdd`/`Remove`, `messageCreate`/`Delete`,
-  `messageReactionAdd`/`Remove`
-- Prefix-/Message-Commands (kein eigenes Event – ganz normales `messageCreate`)
-- Components-V2-Container auswertbar (`extractText()`)
+**Not yet supported:** custom Vitest matchers, other select-menu types (user/role/mentionable/channel), a message-bound `createMessageComponentCollector()` (channel-wide collectors work today), embed snapshot testing, multi-user simulation, permission/role simulation.
 
-**Noch nicht unterstützt:**
+⚠️ **Pre-release.** probe.ts is freshly built and not yet battle-tested at scale — the public API may still change before a stable `v0.1.0`. Feedback and bug reports are very welcome.
 
-- Custom Vitest-Matcher (z.B. `toHaveReplied`) – aktuell nur Assertions
-  auf `lastReply()`/`allReplies()`/etc.
-- Weitere Select-Menu-Typen (User-/Role-/Mentionable-/Channel-Select) –
-  nur String-Select
-- `message.createMessageComponentCollector()` (an eine *bestimmte*
-  Nachricht gebunden) – Channel-weite Collectors funktionieren, siehe
-  `docs/testing-message-components.md`
-- Snapshot-Testing für Embeds, Zeit-/Timer-Kontrolle für Collectors,
-  mehrere simulierte Nutzer pro Test, Permissions-/Rollen-Simulation,
-  Autocomplete-Helfer
+## Use Cases
 
-Noch kein stabiles `v0.1.0`; die öffentliche API kann sich bis dahin noch
-ändern. `package.json` bleibt bewusst bei `version: "0.0.0"` – die echte
-Version setzt `.github/workflows/release.yml` beim Release automatisch
-aus dem Git-Tag.
+- Testing Slash Commands, Buttons, Select Menus, and Modals without a live bot
+- Regression-testing event handlers (welcome messages, reaction roles, prefix commands)
+- Fast, deterministic CI checks for discord.js bots
+- Catching breaking discord.js updates before they reach production
 
-Willst du mitentwickeln? Architektur, Konventionen und offene Punkte:
-`CLAUDE.md`.
+## License
 
-## Lizenz
-
-MIT – siehe `LICENSE`.
+MIT © 2026 GalaxyBot
