@@ -7,28 +7,62 @@ import {
   Locale,
   type APIApplicationCommandInteractionDataOption,
   type APIChatInputApplicationCommandInteraction,
+  type APIChatInputApplicationCommandInteractionDataResolved,
+  type APIUser,
   type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
+import { DEFAULT_IDS, snowflake } from "./ids.js";
 import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
+import { buildMember } from "./member.js";
+import { buildUser } from "./user.js";
 
-/** Slash-Command-Optionen als Name→Wert-Paare; der Options-Typ wird aus dem JS-Wert abgeleitet. */
-export type SlashCommandOptionValues = Record<string, string | number | boolean>;
+/**
+ * Wert einer User-Option (`.addUserOption(...)`) – wie bei Discord kommt der
+ * Nutzer zusätzlich unter `resolved` mit, damit `options.getUser()`/
+ * `options.getMember()` echte Objekte liefern.
+ */
+export interface SlashCommandUserOptionValue {
+  user: Partial<APIUser>;
+}
+
+/**
+ * Slash-Command-Optionen als Name→Wert-Paare; der Options-Typ wird aus dem
+ * JS-Wert abgeleitet (`{ user }` → User-Option).
+ */
+export type SlashCommandOptionValues = Record<string, string | number | boolean | SlashCommandUserOptionValue>;
 
 /** Fixture-Overrides für `buildSlashCommandInteractionDispatch` – jede Ebene einzeln überschreibbar. */
 export interface SlashCommandInteractionOverrides extends InteractionContextOverrides {
   options?: SlashCommandOptionValues;
 }
 
-function toInteractionDataOptions(values: SlashCommandOptionValues): APIApplicationCommandInteractionDataOption[] {
-  return Object.entries(values).map(([name, value]) => {
+function toInteractionData(values: SlashCommandOptionValues): {
+  options: APIApplicationCommandInteractionDataOption[];
+  resolved?: APIChatInputApplicationCommandInteractionDataResolved;
+} {
+  const users: Record<string, APIUser> = {};
+  const options = Object.entries(values).map(([name, value]): APIApplicationCommandInteractionDataOption => {
     if (typeof value === "number") {
       return { name, type: ApplicationCommandOptionType.Number, value };
     }
     if (typeof value === "boolean") {
       return { name, type: ApplicationCommandOptionType.Boolean, value };
     }
+    if (typeof value === "object") {
+      const user = buildUser(value.user);
+      users[user.id] = user;
+      return { name, type: ApplicationCommandOptionType.User, value: user.id };
+    }
     return { name, type: ApplicationCommandOptionType.String, value };
   });
+
+  if (Object.keys(users).length === 0) {
+    return { options };
+  }
+  // resolved-Member tragen weder `user` noch `deaf`/`mute` (der Nutzer steht unter `resolved.users`)
+  const { roles, flags, joined_at, permissions } = buildMember();
+  const members = Object.fromEntries(Object.keys(users).map((id) => [id, { roles, flags, joined_at, permissions }]));
+  return { options, resolved: { users, members } };
 }
 
 /**
@@ -44,8 +78,8 @@ export function buildSlashCommandInteractionDispatch(
   const { channel, guild, member } = buildInteractionContext(overrides);
 
   const interaction = {
-    id: "1",
-    application_id: "0",
+    id: snowflake(),
+    application_id: DEFAULT_IDS.application,
     type: InteractionType.ApplicationCommand,
     token: "interaction-token",
     version: 1,
@@ -64,10 +98,10 @@ export function buildSlashCommandInteractionDispatch(
     guild,
     member,
     data: {
-      id: "100",
+      id: DEFAULT_IDS.command,
       name,
       type: ApplicationCommandType.ChatInput,
-      options: overrides.options ? toInteractionDataOptions(overrides.options) : [],
+      ...toInteractionData(overrides.options ?? {}),
     },
   } satisfies APIChatInputApplicationCommandInteraction;
 

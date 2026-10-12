@@ -14,6 +14,7 @@ komplett unangetastet.
 | Methode                | Zweck                                                              |
 | ----------------------- | ------------------------------------------------------------------- |
 | `setup()`/`teardown()`  | Lifecycle – Fake-Login + Ready-Handshake / sauberes Abräumen        |
+| `login()` + `ready()`   | `setup()` in zwei Schritten – für Bots, die Handler erst nach `client.login()` registrieren (Login im Bot-Bootstrap, `ready()` danach) |
 | `injectDispatch(...)`   | Rohes Gateway-Dispatch injizieren (generischer Fall)                |
 | `emit(name, overrides)` | Generisches Event über Fixture-Builder (`guildMemberAdd`, ...) – siehe `../events/README.md` |
 | `slashCommand(name)`    | Fluent Slash-Command-Aufruf – siehe `../interactions/README.md`     |
@@ -23,7 +24,7 @@ komplett unangetastet.
 | `lastModal()`/`allModals()` | Geparste `showModal(...)`-Aufrufe                               |
 
 Slash-Command-/Button-/Select-Menu-/Modal-Aufrufe sähen dabei intern
-unsichtbar eine Guild mit Default-Channel vor (`injectInteraction()`,
+unsichtbar die Guild der Interaction samt Channel vor (`injectInteraction()`,
 verwendet `buildGuildCreateDispatch` aus `../fixtures/`) – sonst löst
 `interaction.channel`/`interaction.guild` nicht auf (siehe
 `../events/README.md` für dieselbe Regel bei Gateway-Events). Der rohe

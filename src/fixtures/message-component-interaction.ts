@@ -8,15 +8,16 @@ import {
   type APIMessageComponentSelectMenuInteraction,
   type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
+import { DEFAULT_IDS, snowflake } from "./ids.js";
 import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
 import { buildMessage } from "./message.js";
 
 /**
  * Fixture-Overrides für Button-/Select-Menu-Interactions: wer klickt/wählt,
  * plus die `messageId` der Nachricht, an der die Komponente hängt (Default
- * `"1"` – passt ohne weiteres Zutun zu einer zuvor über `channel.send(...)`
- * oder `interaction.reply(...)` verschickten Nachricht, solange in einem
- * Test nur eine Nachricht im Spiel ist).
+ * `DEFAULT_IDS.message` – passt ohne weiteres Zutun zu einer zuvor über
+ * `channel.send(...)` oder `interaction.reply(...)` verschickten Nachricht,
+ * solange in einem Test nur eine Nachricht im Spiel ist).
  */
 export interface MessageComponentOverrides extends InteractionContextOverrides {
   messageId?: string;
@@ -42,8 +43,8 @@ export function buildButtonInteractionDispatch(
   const { channel, guild, member, message } = buildComponentInteractionBase(overrides);
 
   const interaction = {
-    id: "2",
-    application_id: "0",
+    id: snowflake(),
+    application_id: DEFAULT_IDS.application,
     type: InteractionType.MessageComponent,
     token: "interaction-token",
     version: 1,
@@ -90,8 +91,8 @@ export function buildSelectMenuInteractionDispatch(
   const { channel, guild, member, message } = buildComponentInteractionBase(overrides);
 
   const interaction = {
-    id: "2",
-    application_id: "0",
+    id: snowflake(),
+    application_id: DEFAULT_IDS.application,
     type: InteractionType.MessageComponent,
     token: "interaction-token",
     version: 1,

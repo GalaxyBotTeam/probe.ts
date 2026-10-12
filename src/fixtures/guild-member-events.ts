@@ -7,6 +7,7 @@ import {
   type GatewayGuildMemberRemoveDispatch,
   type GatewayGuildMemberRemoveDispatchData,
 } from "discord-api-types/v10";
+import { DEFAULT_IDS } from "./ids.js";
 import { buildMember } from "./member.js";
 import { buildUser } from "./user.js";
 
@@ -27,7 +28,7 @@ export type GuildMemberRemoveOverrides = GuildMemberAddOverrides;
  */
 export function buildGuildMemberAddDispatch(overrides: GuildMemberAddOverrides = {}): GatewayGuildMemberAddDispatch {
   const member = buildMember(overrides.user ? { user: buildUser(overrides.user) } : {});
-  const data = { ...member, guild_id: overrides.guildId ?? "1" } satisfies GatewayGuildMemberAddDispatchData;
+  const data = { ...member, guild_id: overrides.guildId ?? DEFAULT_IDS.guild } satisfies GatewayGuildMemberAddDispatchData;
 
   return {
     op: GatewayOpcodes.Dispatch,
@@ -47,7 +48,7 @@ export function buildGuildMemberRemoveDispatch(
   overrides: GuildMemberRemoveOverrides = {},
 ): GatewayGuildMemberRemoveDispatch {
   const data = {
-    guild_id: overrides.guildId ?? "1",
+    guild_id: overrides.guildId ?? DEFAULT_IDS.guild,
     user: buildUser(overrides.user),
   } satisfies GatewayGuildMemberRemoveDispatchData;
 

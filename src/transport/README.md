@@ -46,9 +46,18 @@ Zwei Methoden:
 
 `RestAdapter.makeRequest` ersetzt `@discordjs/rest`'s echten
 undici-Transport (`RESTOptions.makeRequest`). Zeichnet jeden ausgehenden
-Call in `requests` auf und beantwortet ihn synchron, ohne Netzwerk – bis
-auf `/gateway/bot`, das `client.login()` vor dem Verbindungsaufbau abfragt
-und einen Fake-Wert zurückbekommt.
+Call in `requests` auf und beantwortet ihn, ohne Netzwerk:
+
+- `/gateway/bot` (fragt `client.login()` vor dem Verbindungsaufbau ab) –
+  Fake-Wert, wird nicht aufgezeichnet
+- Routen, auf die Discord mit einer Nachricht antwortet (`POST`/`PATCH`
+  `/channels/:id/messages…`, `followUp()`/`editReply()` über
+  `/webhooks/…`) – eine vollständige `APIMessage` mit frischer Snowflake und
+  dem gesendeten Body; die Id merkt sich `lastMessageId` als Default-Ziel für
+  `probe.button()`/`selectMenu()`
+- über `probe.respond(method, pfad, responder)` hinterlegte Routen (Vorrang
+  vor den eingebauten), z.B. Listen, die der Bot per `GET` lädt
+- alles andere: leere 204-Antwort
 
 ## Erweiterungspunkt
 

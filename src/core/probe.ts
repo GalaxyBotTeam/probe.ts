@@ -1,14 +1,20 @@
 import { REST } from "@discordjs/rest";
 import type { Client } from "discord.js";
-import type { ApplicationFlags, GatewayDispatchPayload, GatewayReadyDispatchData } from "discord-api-types/v10";
+import type {
+  ApplicationFlags,
+  GatewayDispatchPayload,
+  GatewayInteractionCreateDispatch,
+  GatewayReadyDispatchData,
+} from "discord-api-types/v10";
 import { buildGatewayEventDispatches, type GatewayEventName, type GatewayEventOverrides } from "../events/gateway-event.js";
 import { buildGuildCreateDispatch } from "../fixtures/guild-create.js";
+import { DEFAULT_IDS } from "../fixtures/ids.js";
 import { createButtonInvocation, createSelectMenuInvocation, type ButtonInvocation, type SelectMenuInvocation } from "../interactions/message-component.js";
 import { createModalSubmitInvocation, type ModalSubmitInvocation } from "../interactions/modal.js";
 import { parseModal, parseReply, type ModalContent, type ReplyContent } from "../interactions/replies.js";
 import { createSlashCommandInvocation, type SlashCommandInvocation } from "../interactions/slash-command.js";
 import { GatewayAdapter } from "../transport/gateway-adapter.js";
-import { type CapturedRequest, RestAdapter } from "../transport/rest-adapter.js";
+import { type CapturedRequest, RestAdapter, type RestResponder } from "../transport/rest-adapter.js";
 
 /** Wartet, bis `condition()` wahr wird, oder wirft nach `timeoutMs` (Standard: 1000ms). */
 async function waitUntil(condition: () => boolean, timeoutMs = 1000): Promise<void> {
@@ -24,12 +30,12 @@ async function waitUntil(condition: () => boolean, timeoutMs = 1000): Promise<vo
 /** Minimaler READY-Payload – reicht discord.js, um sofort "AllReady" zu melden. */
 const FAKE_READY_DATA = {
   v: 10,
-  user: { id: "0", username: "probe", discriminator: "0000", global_name: null, avatar: null, bot: true },
+  user: { id: DEFAULT_IDS.bot, username: "probe", discriminator: "0000", global_name: null, avatar: null, bot: true },
   guilds: [],
   session_id: "probe-session",
   resume_gateway_url: "wss://gateway.discord.gg",
   shard: [0, 1],
-  application: { id: "0", flags: 0 as ApplicationFlags, flags_new: "0" },
+  application: { id: DEFAULT_IDS.application, flags: 0 as ApplicationFlags, flags_new: "0" },
 } satisfies GatewayReadyDispatchData;
 
 /**
@@ -38,8 +44,16 @@ const FAKE_READY_DATA = {
  * senden. Siehe `src/transport/README.md` für die Architektur-Begründung.
  */
 export interface Probe {
-  /** Loggt den Client gegen den Fake-Transport ein und wartet auf "Ready". */
+  /** Loggt den Client gegen den Fake-Transport ein und meldet ihn "Ready" – `login()` + `ready()` in einem. */
   setup(): Promise<void>;
+  /**
+   * Nur der Login gegen den Fake-Transport, ohne READY. Für Bots, die ihre
+   * Event-Handler erst nach `client.login()` registrieren: erst den Bot
+   * fertig booten lassen, dann `ready()`.
+   */
+  login(): Promise<void>;
+  /** Meldet den eingeloggten Client "Ready" (feuert `clientReady`). */
+  ready(): void;
   /** Räumt den Client sauber ab (kein echter Socket, aber Timer/Listener). */
   teardown(): Promise<void>;
   /** Injiziert ein rohes Gateway-Dispatch-Event (z.B. `INTERACTION_CREATE`). */
@@ -57,10 +71,22 @@ export interface Probe {
   capturedRequests(): readonly CapturedRequest[];
   /** Baut einen Slash-Command-Aufruf (`.withOptions(...).invoke()`). */
   slashCommand(name: string): SlashCommandInvocation;
-  /** Baut einen Button-Klick (`.click()`) – Default-`messageId` `"1"` (siehe `MessageComponentOverrides`). */
+  /**
+   * Baut einen Button-Klick (`.click()`) auf der zuletzt vom Bot gesendeten
+   * Nachricht (vor der ersten: `DEFAULT_IDS.message`) – so greifen auch an
+   * die Nachricht gebundene Collectors.
+   */
   button(customId: string): ButtonInvocation;
-  /** Baut eine Select-Menu-Auswahl (`.withValues([...]).select()`). Deckt aktuell nur String-Select ab. */
+  /** Baut eine Select-Menu-Auswahl (`.withValues([...]).select()`), wie `button()` auf der zuletzt gesendeten Nachricht. Deckt aktuell nur String-Select ab. */
   selectMenu(customId: string): SelectMenuInvocation;
+  /**
+   * Hinterlegt, was Discord auf `method` + Pfad (Regex gegen den URL-Pfad)
+   * antwortet – für Routen, auf die der Bot einen Body erwartet, z.B.
+   * `probe.respond("GET", /\/guilds\/\d+\/invites$/, () => [])`. Hat Vorrang
+   * vor den eingebauten Nachrichten-Routen; ohne passende Route kommt eine
+   * leere 204-Antwort.
+   */
+  respond(method: string, path: RegExp, responder: RestResponder): void;
   /** Baut einen Modal-Submit (`.withFields({...}).submit()`). */
   modal(customId: string): ModalSubmitInvocation;
   /** Der Inhalt der zuletzt gesendeten Antwort (`reply`/`editReply`), oder `undefined` falls noch keine kam. */
@@ -93,7 +119,7 @@ export function createProbe(client: Client): Probe {
 
   function requireGateway(): GatewayAdapter {
     if (!gateway) {
-      throw new Error("probe.ts: setup() muss vor injectDispatch()/emit() aufgerufen werden");
+      throw new Error("probe.ts: setup() oder login() muss vor injectDispatch()/emit()/ready() aufgerufen werden");
     }
     return gateway;
   }
@@ -114,24 +140,40 @@ export function createProbe(client: Client): Probe {
 
   /**
    * Injiziert eine Interaction (Slash Command, Button, Select Menu, Modal) –
-   * sät davor unsichtbar eine Guild mit Default-Channel (siehe
+   * sät davor unsichtbar die Guild der Interaction samt Channel (siehe
    * `buildGuildCreateDispatch`), damit `interaction.channel` echt auflöst
    * (discord.js cached den Channel sonst nicht, siehe
    * `src/events/README.md` für dieselbe Regel bei Gateway-Events). Nur für
    * die Fluent-Invocations (`slashCommand`/`button`/`selectMenu`/`modal`) –
    * der rohe `injectDispatch()` bleibt bewusst ohne Seeding.
    */
-  function injectInteraction(dispatch: GatewayDispatchPayload): void {
+  function injectInteraction(dispatch: GatewayInteractionCreateDispatch): void {
     const gateway = requireGateway();
-    gateway.injectDispatch(buildGuildCreateDispatch());
+    const { guild_id: guildId, channel } = dispatch.d;
+    gateway.injectDispatch(
+      buildGuildCreateDispatch({
+        ...(guildId ? { id: guildId } : {}),
+        ...(channel ? { channel: { id: channel.id, type: channel.type } } : {}),
+      }),
+    );
     gateway.injectDispatch(dispatch);
+  }
+
+  async function login(): Promise<void> {
+    await client.login("probe.ts-fake-token");
+  }
+
+  function ready(): void {
+    requireGateway().injectReady(FAKE_READY_DATA);
   }
 
   return {
     async setup() {
-      await client.login("probe.ts-fake-token");
-      requireGateway().injectReady(FAKE_READY_DATA);
+      await login();
+      ready();
     },
+    login,
+    ready,
     async teardown() {
       await client.destroy();
     },
@@ -151,10 +193,13 @@ export function createProbe(client: Client): Probe {
       return createSlashCommandInvocation(name, injectInteraction, waitForNextRequest);
     },
     button(customId) {
-      return createButtonInvocation(customId, injectInteraction, waitForNextRequest);
+      return createButtonInvocation(customId, injectInteraction, waitForNextRequest, () => rest.lastMessageId);
     },
     selectMenu(customId) {
-      return createSelectMenuInvocation(customId, injectInteraction, waitForNextRequest);
+      return createSelectMenuInvocation(customId, injectInteraction, waitForNextRequest, () => rest.lastMessageId);
+    },
+    respond(method, path, responder) {
+      rest.respond(method, path, responder);
     },
     modal(customId) {
       return createModalSubmitInvocation(customId, injectInteraction, waitForNextRequest);

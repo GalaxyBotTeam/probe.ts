@@ -10,7 +10,7 @@ Jeder Builder:
 
 - nimmt ein optionales `overrides`-Objekt (Default `{}`), jedes Feld
   einzeln überschreibbar
-- hat sinnvolle Defaults (`id: "1"` etc. – konsistent über alle Builder,
+- hat sinnvolle Defaults (`DEFAULT_IDS` aus `ids.ts`: echte Snowflakes, konsistent über alle Builder,
   damit z.B. `buildUser({ id: "42" })` und `buildGuild()` ohne weiteres
   Zutun zusammenpassen)
 - ist typisiert gegen `discord-api-types/v10`, nie gegen eine
@@ -20,6 +20,7 @@ Jeder Builder:
 
 | Datei                              | Builder                                                          | Baut                                    |
 | ----------------------------------- | ------------------------------------------------------------------ | ----------------------------------------- |
+| `ids.ts`                            | `DEFAULT_IDS`, `snowflake`                                         | Default-Snowflakes, frische IDs           |
 | `user.ts`                           | `buildUser`                                                       | `APIUser`                                 |
 | `guild.ts`                          | `buildGuild`                                                       | `APIPartialInteractionGuild`              |
 | `channel.ts`                        | `buildChannel`                                                     | Minimaler Channel-Payload (`id`, `type`)   |
@@ -29,7 +30,7 @@ Jeder Builder:
 | `interaction.ts`                    | `buildSlashCommandInteractionDispatch`                             | `INTERACTION_CREATE` (Slash Command)      |
 | `message-component-interaction.ts`  | `buildButtonInteractionDispatch`, `buildSelectMenuInteractionDispatch` | `INTERACTION_CREATE` (Button-Klick, String-Select) |
 | `modal-interaction.ts`              | `buildModalSubmitInteractionDispatch`                              | `INTERACTION_CREATE` (Modal-Submit)       |
-| `guild-create.ts`                   | `buildGuildCreateDispatch`                                         | `GUILD_CREATE` – Cache-Vorbereitung       |
+| `guild-create.ts`                   | `buildGuildCreateDispatch`, `buildRole`                            | `GUILD_CREATE` – Cache-Vorbereitung (Owner, `@everyone`, Bot als Admin-Member) |
 | `guild-member-events.ts`            | `buildGuildMemberAddDispatch`, `buildGuildMemberRemoveDispatch`    | `GUILD_MEMBER_ADD`/`_REMOVE`              |
 | `message-events.ts`                 | `buildMessageCreateDispatch`, `buildMessageDeleteDispatch`         | `MESSAGE_CREATE`/`_DELETE`                |
 | `reaction-events.ts`                | `buildMessageReactionAddDispatch`, `buildMessageReactionRemoveDispatch` | `MESSAGE_REACTION_ADD`/`_REMOVE` (nur Unicode-Emoji, kein custom Server-Emoji) |

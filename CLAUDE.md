@@ -140,14 +140,13 @@ Kommandos, in der Reihenfolge) – Vitest allein typecheckt nicht.
   aktuell nur einfache Assertions auf `lastReply()`/`allReplies()`/etc.
 - Weitere Select-Menu-Typen (User-/Role-/Mentionable-/Channel-Select) –
   aktuell nur String-Select (`src/fixtures/message-component-interaction.ts`)
-- Fake-REST-Layer gibt bei `channel.send(...)`/`interaction.reply({withResponse:true})`
-  noch keine echte, brauchbare `Message` zurück – blockiert
-  `message.createMessageComponentCollector()` (an eine bestimmte Nachricht
-  gebunden statt channel-weit), s. `docs/testing-message-components.md`
+- Fake-REST-Layer gibt bei `interaction.reply({withResponse:true})` noch
+  keine `Message` zurück (`channel.send()`, `followUp()`, `editReply()`
+  schon), s. `docs/testing-message-components.md`
 - `followUp()` wird von `parseReply()` noch nicht separat erkannt (landet
   aber roh in `probe.capturedRequests()`)
 - Snapshot-Testing für Embeds, Zeit-/Timer-Kontrolle für Collectors,
-  mehrere simulierte Nutzer pro Test, Permissions-/Rollen-Simulation
+  Permissions-/Rollen-Simulation
 - npm-Veröffentlichung + Ankündigung in der GalaxyBot-Community stehen
   noch aus – `package.json` bleibt bewusst bei `version: "0.0.0"`, die
   echte Version setzt `.github/workflows/release.yml` dynamisch aus dem

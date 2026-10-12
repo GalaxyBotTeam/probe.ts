@@ -1,4 +1,5 @@
 import { MessageType, type APIMessage, type APIUser } from "discord-api-types/v10";
+import { DEFAULT_IDS } from "./ids.js";
 import { buildChannel, type ChannelFixture } from "./channel.js";
 import { buildUser } from "./user.js";
 
@@ -20,7 +21,7 @@ export function buildMessage(overrides: MessageOverrides = {}): APIMessage {
   const channel = buildChannel(overrides.channel);
 
   return {
-    id: overrides.id ?? "1",
+    id: overrides.id ?? DEFAULT_IDS.message,
     channel_id: channel.id,
     author: buildUser(overrides.author),
     content: overrides.content ?? "",

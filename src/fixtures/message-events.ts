@@ -7,6 +7,7 @@ import {
   type GatewayMessageDeleteDispatch,
   type GatewayMessageDeleteDispatchData,
 } from "discord-api-types/v10";
+import { DEFAULT_IDS } from "./ids.js";
 import { buildChannel, type ChannelFixture } from "./channel.js";
 import { buildMessage } from "./message.js";
 
@@ -34,7 +35,7 @@ export interface MessageDeleteOverrides {
  */
 export function buildMessageCreateDispatch(overrides: MessageCreateOverrides = {}): GatewayMessageCreateDispatch {
   const base = buildMessage(overrides);
-  const message = { ...base, guild_id: overrides.guildId ?? "1" } satisfies GatewayMessageCreateDispatchData;
+  const message = { ...base, guild_id: overrides.guildId ?? DEFAULT_IDS.guild } satisfies GatewayMessageCreateDispatchData;
 
   return {
     op: GatewayOpcodes.Dispatch,
@@ -56,9 +57,9 @@ export function buildMessageDeleteDispatch(overrides: MessageDeleteOverrides = {
   const channel = buildChannel(overrides.channel);
 
   const data = {
-    id: overrides.id ?? "1",
+    id: overrides.id ?? DEFAULT_IDS.message,
     channel_id: channel.id,
-    guild_id: overrides.guildId ?? "1",
+    guild_id: overrides.guildId ?? DEFAULT_IDS.guild,
   } satisfies GatewayMessageDeleteDispatchData;
 
   return {

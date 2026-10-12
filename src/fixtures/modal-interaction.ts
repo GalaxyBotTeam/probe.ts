@@ -8,6 +8,7 @@ import {
   type APIModalSubmitInteraction,
   type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
+import { DEFAULT_IDS, snowflake } from "./ids.js";
 import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
 
 /**
@@ -35,8 +36,8 @@ export function buildModalSubmitInteractionDispatch(
   const fields = overrides.fields ?? {};
 
   const interaction = {
-    id: "3",
-    application_id: "0",
+    id: snowflake(),
+    application_id: DEFAULT_IDS.application,
     type: InteractionType.ModalSubmit,
     token: "interaction-token",
     version: 1,
