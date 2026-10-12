@@ -14,7 +14,7 @@ import { createModalSubmitInvocation, type ModalSubmitInvocation } from "../inte
 import { parseModal, parseReply, type ModalContent, type ReplyContent } from "../interactions/replies.js";
 import { createSlashCommandInvocation, type SlashCommandInvocation } from "../interactions/slash-command.js";
 import { GatewayAdapter } from "../transport/gateway-adapter.js";
-import { type CapturedRequest, RestAdapter } from "../transport/rest-adapter.js";
+import { type CapturedRequest, RestAdapter, type RestResponder } from "../transport/rest-adapter.js";
 
 /** Wartet, bis `condition()` wahr wird, oder wirft nach `timeoutMs` (Standard: 1000ms). */
 async function waitUntil(condition: () => boolean, timeoutMs = 1000): Promise<void> {
@@ -71,10 +71,22 @@ export interface Probe {
   capturedRequests(): readonly CapturedRequest[];
   /** Baut einen Slash-Command-Aufruf (`.withOptions(...).invoke()`). */
   slashCommand(name: string): SlashCommandInvocation;
-  /** Baut einen Button-Klick (`.click()`) – Default-`messageId` `DEFAULT_IDS.message` (siehe `MessageComponentOverrides`). */
+  /**
+   * Baut einen Button-Klick (`.click()`) auf der zuletzt vom Bot gesendeten
+   * Nachricht (vor der ersten: `DEFAULT_IDS.message`) – so greifen auch an
+   * die Nachricht gebundene Collectors.
+   */
   button(customId: string): ButtonInvocation;
-  /** Baut eine Select-Menu-Auswahl (`.withValues([...]).select()`). Deckt aktuell nur String-Select ab. */
+  /** Baut eine Select-Menu-Auswahl (`.withValues([...]).select()`), wie `button()` auf der zuletzt gesendeten Nachricht. Deckt aktuell nur String-Select ab. */
   selectMenu(customId: string): SelectMenuInvocation;
+  /**
+   * Hinterlegt, was Discord auf `method` + Pfad (Regex gegen den URL-Pfad)
+   * antwortet – für Routen, auf die der Bot einen Body erwartet, z.B.
+   * `probe.respond("GET", /\/guilds\/\d+\/invites$/, () => [])`. Hat Vorrang
+   * vor den eingebauten Nachrichten-Routen; ohne passende Route kommt eine
+   * leere 204-Antwort.
+   */
+  respond(method: string, path: RegExp, responder: RestResponder): void;
   /** Baut einen Modal-Submit (`.withFields({...}).submit()`). */
   modal(customId: string): ModalSubmitInvocation;
   /** Der Inhalt der zuletzt gesendeten Antwort (`reply`/`editReply`), oder `undefined` falls noch keine kam. */
@@ -181,10 +193,13 @@ export function createProbe(client: Client): Probe {
       return createSlashCommandInvocation(name, injectInteraction, waitForNextRequest);
     },
     button(customId) {
-      return createButtonInvocation(customId, injectInteraction, waitForNextRequest);
+      return createButtonInvocation(customId, injectInteraction, waitForNextRequest, () => rest.lastMessageId);
     },
     selectMenu(customId) {
-      return createSelectMenuInvocation(customId, injectInteraction, waitForNextRequest);
+      return createSelectMenuInvocation(customId, injectInteraction, waitForNextRequest, () => rest.lastMessageId);
+    },
+    respond(method, path, responder) {
+      rest.respond(method, path, responder);
     },
     modal(customId) {
       return createModalSubmitInvocation(customId, injectInteraction, waitForNextRequest);

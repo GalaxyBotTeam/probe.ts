@@ -1,6 +1,6 @@
 export { createProbe, type Probe } from "./core/probe.js";
 export type { GatewayEventName, GatewayEventOverrides } from "./events/gateway-event.js";
-export type { CapturedRequest } from "./transport/rest-adapter.js";
+export type { CapturedRequest, RestResponder, RestResponderContext } from "./transport/rest-adapter.js";
 export type { SlashCommandInvocation } from "./interactions/slash-command.js";
 export type { ButtonInvocation, SelectMenuInvocation } from "./interactions/message-component.js";
 export type { ModalSubmitInvocation } from "./interactions/modal.js";

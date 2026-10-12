@@ -65,16 +65,17 @@ reagieren auf injizierte Interactions genau wie auf echte. Siehe
 wird per `awaitMessageComponent()` eingesammelt, ein Modal-Submit per
 `awaitModalSubmit()`.
 
-**Wichtig:** `message.createMessageComponentCollector()` (an eine
-*bestimmte* Nachricht gebunden) braucht eine echte `Message` mit der ID
-dieser Nachricht – aktuell liefert unser Fake-REST-Layer bei
-`channel.send(...)`/`interaction.reply({ withResponse: true })` noch keine
-brauchbare `Message` zurück (offener Punkt, siehe „Bekannte Lücken" in
-`CLAUDE.md`). Bis dahin: `channel.awaitMessageComponent(...)`/
-`channel.createMessageComponentCollector(...)` (Channel-weit, kein
-Message-Binding nötig) oder `interaction.awaitModalSubmit(...)`
-(Interaction-weit, nur Filter) verwenden – beides der ohnehin
-gebräuchlichere Ansatz in discord.js-Bots.
+An eine *bestimmte* Nachricht gebundene Collectors
+(`(await channel.send(...)).awaitMessageComponent()`/
+`createMessageComponentCollector()`) funktionieren ebenfalls: `channel.send()`
+bekommt eine echte `Message` zurück, und `probe.button()`/`selectMenu()`
+klicken standardmäßig auf die zuletzt vom Bot gesendete Nachricht (siehe
+`tests/rest-responder.e2e.test.ts`).
+
+**Noch offen:** `interaction.reply({ withResponse: true })` liefert noch
+keine `Message` (offener Punkt, siehe „Bekannte Lücken" in `CLAUDE.md`) –
+dort `channel.awaitMessageComponent(...)` oder
+`interaction.awaitModalSubmit(...)` verwenden.
 
 ## Components-V2-Container auswerten
 

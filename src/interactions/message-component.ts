@@ -4,6 +4,11 @@ import {
   buildSelectMenuInteractionDispatch,
 } from "../fixtures/message-component-interaction.js";
 
+/** `messageId`-Override nur, wenn der Bot schon eine Nachricht gesendet hat – sonst bleibt der Fixture-Default. */
+function withMessageId(messageId: string | undefined): { messageId?: string } {
+  return messageId ? { messageId } : {};
+}
+
 /** Fluent Builder für einen Button-Klick, von `Probe.button()` zurückgegeben. */
 export interface ButtonInvocation {
   /** Setzt, wer wo klickt (User, Member, Guild, Channel). Gibt sich selbst zurück, zum Verketten. */
@@ -20,6 +25,7 @@ export function createButtonInvocation(
   customId: string,
   inject: (dispatch: ReturnType<typeof buildButtonInteractionDispatch>) => void,
   waitForReply: () => Promise<void>,
+  defaultMessageId: () => string | undefined,
 ): ButtonInvocation {
   let context: InteractionContextOverrides = {};
 
@@ -29,7 +35,7 @@ export function createButtonInvocation(
       return invocation;
     },
     async click() {
-      inject(buildButtonInteractionDispatch(customId, context));
+      inject(buildButtonInteractionDispatch(customId, { ...withMessageId(defaultMessageId()), ...context }));
       await waitForReply();
     },
   };
@@ -56,6 +62,7 @@ export function createSelectMenuInvocation(
   customId: string,
   inject: (dispatch: ReturnType<typeof buildSelectMenuInteractionDispatch>) => void,
   waitForReply: () => Promise<void>,
+  defaultMessageId: () => string | undefined,
 ): SelectMenuInvocation {
   let values: string[] = [];
   let context: InteractionContextOverrides = {};
@@ -70,7 +77,7 @@ export function createSelectMenuInvocation(
       return invocation;
     },
     async select() {
-      inject(buildSelectMenuInteractionDispatch(customId, values, context));
+      inject(buildSelectMenuInteractionDispatch(customId, values, { ...withMessageId(defaultMessageId()), ...context }));
       await waitForReply();
     },
   };
