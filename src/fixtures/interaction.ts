@@ -5,6 +5,7 @@ import {
   GatewayOpcodes,
   InteractionType,
   Locale,
+  type APIApplicationCommandInteractionDataBasicOption,
   type APIApplicationCommandInteractionDataOption,
   type APIChatInputApplicationCommandInteraction,
   type APIChatInputApplicationCommandInteractionDataResolved,
@@ -37,11 +38,11 @@ export interface SlashCommandInteractionOverrides extends InteractionContextOver
 }
 
 function toInteractionData(values: SlashCommandOptionValues): {
-  options: APIApplicationCommandInteractionDataOption[];
+  options: APIApplicationCommandInteractionDataBasicOption[];
   resolved?: APIChatInputApplicationCommandInteractionDataResolved;
 } {
   const users: Record<string, APIUser> = {};
-  const options = Object.entries(values).map(([name, value]): APIApplicationCommandInteractionDataOption => {
+  const options = Object.entries(values).map(([name, value]): APIApplicationCommandInteractionDataBasicOption => {
     if (typeof value === "number") {
       return { name, type: ApplicationCommandOptionType.Number, value };
     }
@@ -65,17 +66,45 @@ function toInteractionData(values: SlashCommandOptionValues): {
   return { options, resolved: { users, members } };
 }
 
+/** Packt die Optionen wie Discord in Subcommand (und ggf. Subcommand-Gruppe) – `path` ist `[]`, `[sub]` oder `[gruppe, sub]`. */
+function nestInSubcommand(
+  path: string[],
+  options: APIApplicationCommandInteractionDataBasicOption[],
+): APIApplicationCommandInteractionDataOption[] {
+  const [first, second] = path;
+  if (first === undefined) {
+    return options;
+  }
+  if (second === undefined) {
+    return [{ name: first, type: ApplicationCommandOptionType.Subcommand, options }];
+  }
+  return [
+    {
+      name: first,
+      type: ApplicationCommandOptionType.SubcommandGroup,
+      options: [{ name: second, type: ApplicationCommandOptionType.Subcommand, options }],
+    },
+  ];
+}
+
 /**
  * Baut ein rohes `INTERACTION_CREATE`-Gateway-Dispatch-Event für einen
  * Slash-Command. Die Interaction läuft standardmäßig in einer Guild (siehe
  * `buildGuild`/`buildMember`) – discord.js baut daraus ein echtes
- * `ChatInputCommandInteraction`.
+ * `ChatInputCommandInteraction`. `name` darf wie in Discord einen Subcommand
+ * (`"ticket close"`) oder Gruppe + Subcommand (`"ticket admin close"`)
+ * enthalten; die Optionen landen dann im Subcommand.
  */
 export function buildSlashCommandInteractionDispatch(
   name: string,
   overrides: SlashCommandInteractionOverrides = {},
 ): GatewayInteractionCreateDispatch {
   const { channel, guild, member } = buildInteractionContext(overrides);
+  const [commandName = "", ...subcommandPath] = name.trim().split(/\s+/);
+  if (subcommandPath.length > 2) {
+    throw new Error(`probe.ts: "${name}" – Discord erlaubt höchstens Command, Subcommand-Gruppe und Subcommand`);
+  }
+  const { options, resolved } = toInteractionData(overrides.options ?? {});
 
   const interaction = {
     id: snowflake(),
@@ -99,9 +128,10 @@ export function buildSlashCommandInteractionDispatch(
     member,
     data: {
       id: DEFAULT_IDS.command,
-      name,
+      name: commandName,
       type: ApplicationCommandType.ChatInput,
-      ...toInteractionData(overrides.options ?? {}),
+      options: nestInSubcommand(subcommandPath, options),
+      ...(resolved ? { resolved } : {}),
     },
   } satisfies APIChatInputApplicationCommandInteraction;
 

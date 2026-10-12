@@ -17,6 +17,11 @@ await probe.slashCommand("echo").withOptions({ message: "hallo" }).invoke();
 // User-Option: `{ user }` statt eines Strings – landet wie bei Discord auch
 // unter `resolved`, `options.getUser()`/`getMember()` liefern echte Objekte
 await probe.slashCommand("warn").withOptions({ member: { user: { username: "anna" } } }).invoke();
+
+// Subcommand (und Gruppe) wie in Discord durch Leerzeichen getrennt – die
+// Optionen landen im Subcommand, `options.getSubcommand()` funktioniert
+await probe.slashCommand("ticket close").withOptions({ grund: "erledigt" }).invoke();
+await probe.slashCommand("ticket admin close").invoke();
 ```
 
 ## `message-component.ts`
