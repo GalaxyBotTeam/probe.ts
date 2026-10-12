@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, PermissionFlagsBits } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
 import { createWelcomeBot } from "../examples/welcome-bot/bot.js";
 import { createProbe, DEFAULT_IDS } from "../src/index.js";
@@ -81,6 +81,23 @@ describe("emit()", () => {
     await vi.waitFor(() => {
       expect(deletedId).toBe("99");
     });
+
+    await probe.teardown();
+  });
+
+  it("geseedete Guild: Owner, @everyone ohne Rechte, der Bot als Administrator", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+    const probe = createProbe(client);
+    await probe.setup();
+
+    probe.emit("guildMemberAdd", { user: { username: "anna" } });
+
+    const guild = client.guilds.cache.get(DEFAULT_IDS.guild);
+    expect(guild?.ownerId).toBe(DEFAULT_IDS.owner);
+    expect(guild?.roles.everyone.permissions.bitfield).toBe(0n);
+    expect(guild?.members.me?.permissions.has(PermissionFlagsBits.Administrator)).toBe(true);
+    // der neue Member hat nur @everyone – kein Admin, solange der Test nichts anderes sagt
+    expect(guild?.members.cache.get(DEFAULT_IDS.user)?.permissions.has(PermissionFlagsBits.Administrator)).toBe(false);
 
     await probe.teardown();
   });

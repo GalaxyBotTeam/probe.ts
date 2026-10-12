@@ -23,7 +23,7 @@ komplett unangetastet.
 | `lastModal()`/`allModals()` | Geparste `showModal(...)`-Aufrufe                               |
 
 Slash-Command-/Button-/Select-Menu-/Modal-Aufrufe sähen dabei intern
-unsichtbar eine Guild mit Default-Channel vor (`injectInteraction()`,
+unsichtbar die Guild der Interaction samt Channel vor (`injectInteraction()`,
 verwendet `buildGuildCreateDispatch` aus `../fixtures/`) – sonst löst
 `interaction.channel`/`interaction.guild` nicht auf (siehe
 `../events/README.md` für dieselbe Regel bei Gateway-Events). Der rohe

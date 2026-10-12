@@ -24,7 +24,7 @@ export {
   type MessageComponentOverrides,
 } from "./fixtures/message-component-interaction.js";
 export { buildModalSubmitInteractionDispatch, type ModalSubmitOverrides } from "./fixtures/modal-interaction.js";
-export { buildGuildCreateDispatch, type GuildCreateOverrides } from "./fixtures/guild-create.js";
+export { buildGuildCreateDispatch, buildRole, type GuildCreateOverrides } from "./fixtures/guild-create.js";
 export {
   buildGuildMemberAddDispatch,
   buildGuildMemberRemoveDispatch,

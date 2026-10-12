@@ -19,6 +19,8 @@ export const DEFAULT_IDS = {
   /** Rolle, die der Bot in jeder geseedeten Guild trägt (Administrator). */
   botRole: "1100000000000000007",
   command: "1100000000000000008",
+  /** Owner jeder geseedeten Guild – bewusst nicht `user`, sonst bestünde der Default-Nutzer jeden Rechte-Check. */
+  owner: "1100000000000000009",
 } as const;
 
 let sequence = 0n;
