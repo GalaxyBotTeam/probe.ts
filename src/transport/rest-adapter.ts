@@ -2,28 +2,28 @@ import type { RESTOptions, ResponseLike } from "@discordjs/rest";
 import { DEFAULT_IDS, snowflake } from "../fixtures/ids.js";
 import { buildMessage } from "../fixtures/message.js";
 
-/** Kopiert von `RESTOptions.makeRequest`, um den exakten undici-`RequestInit`-Typ zu übernehmen. */
+/** Copied from `RESTOptions.makeRequest` to take over the exact undici `RequestInit` type. */
 type MakeRequest = RESTOptions["makeRequest"];
 
-/** Ein abgefangener ausgehender REST-Call, für Test-Assertions aufbereitet. */
+/** A captured outgoing REST call, prepared for test assertions. */
 export interface CapturedRequest {
   method: string;
   url: string;
-  /** JSON-geparster Body, falls vorhanden (discord.js sendet REST-Bodies als JSON). */
+  /** JSON-parsed body, if present (discord.js sends REST bodies as JSON). */
   body: unknown;
 }
 
-/** Was ein Responder über den Call erfährt, den er beantwortet. */
+/** What a responder learns about the call it answers. */
 export interface RestResponderContext {
-  /** Treffer des Pfad-Patterns – Capture-Gruppen sind z.B. Channel- oder Guild-Id. */
+  /** Match of the path pattern – capture groups are e.g. a channel or guild id. */
   match: RegExpMatchArray;
   request: CapturedRequest;
 }
 
 /**
- * Liefert den JSON-Body, mit dem Discord auf einen Call geantwortet hätte.
- * `undefined` heißt: dieser Responder ist nicht zuständig, der nächste (oder
- * die leere 204-Antwort) übernimmt.
+ * Returns the JSON body Discord would have answered a call with.
+ * `undefined` means: this responder isn't responsible, the next one (or the
+ * empty 204 response) takes over.
  */
 export type RestResponder = (context: RestResponderContext) => unknown;
 
@@ -65,44 +65,44 @@ const emptyResponse: ResponseLike = {
 };
 
 /**
- * Fake `RESTOptions.makeRequest` – ersetzt `@discordjs/rest`'s echten
- * undici-Transport. Zeichnet jeden ausgehenden Call auf und beantwortet ihn,
- * ohne dass ein Netzwerk-Request stattfindet: Routen, auf die Discord mit
- * einer Nachricht antwortet, bekommen eine echte `APIMessage` (sonst scheitert
- * z.B. `channel.send()` beim Bauen seines Rückgabewerts), alles andere eine
- * leere 204-Antwort – außer ein Test hat über `respond()` mehr hinterlegt.
+ * Fake `RESTOptions.makeRequest` – replaces `@discordjs/rest`'s real undici
+ * transport. Records every outgoing call and answers it without any network
+ * request: routes Discord answers with a message get a real `APIMessage`
+ * (otherwise e.g. `channel.send()` fails while building its return value),
+ * everything else an empty 204 response – unless a test registered more via
+ * `respond()`.
  *
- * Nicht Teil der öffentlichen probe.ts-API – nur intern via `createProbe`
- * verwendet.
+ * Not part of the public probe.ts API – only used internally via
+ * `createProbe`.
  */
 export class RestAdapter {
   readonly requests: CapturedRequest[] = [];
 
-  /** Id der zuletzt vom Bot erstellten Nachricht – Default-`messageId` für `probe.button()`/`selectMenu()`. */
+  /** Id of the message the bot created last – default `messageId` for `probe.button()`/`selectMenu()`. */
   lastMessageId: string | undefined;
 
-  /** `client.login()` ruft das vor dem eigentlichen Gateway-Connect ab. */
+  /** `client.login()` fetches this before the actual gateway connect. */
   private readonly gatewayBotInfo = {
     url: "wss://gateway.discord.gg/",
     shards: 1,
     session_start_limit: { total: 1000, remaining: 1000, reset_after: 0, max_concurrency: 1 },
   };
 
-  /** Selbst hinterlegte Routen zuerst, dann die eingebauten Nachrichten-Routen. */
+  /** Routes registered by tests first, then the built-in message routes. */
   private readonly routes: Route[] = [
     { method: "POST", path: /\/channels\/(\d+)\/messages$/, respond: ({ match, request }) => this.message(match[1], request.body) },
     { method: "PATCH", path: /\/channels\/(\d+)\/messages\/(\d+)$/, respond: ({ match, request }) => this.message(match[1], request.body, match[2]) },
-    // Interaction-Follow-ups (`followUp()`) und Edits der Antwort (`editReply()`)
+    // interaction follow-ups (`followUp()`) and edits of the reply (`editReply()`)
     { method: "POST", path: /\/webhooks\/\d+\/[^/]+$/, respond: ({ request }) => this.message(undefined, request.body) },
     { method: "PATCH", path: /\/webhooks\/\d+\/[^/]+\/messages\/[^/]+$/, respond: ({ request }) => this.message(undefined, request.body) },
   ];
 
-  /** Hinterlegt eine Antwort für `method` + Pfad-Pattern; hat Vorrang vor den eingebauten Routen. */
+  /** Registers a response for `method` + path pattern; takes precedence over the built-in routes. */
   respond(method: string, path: RegExp, responder: RestResponder): void {
     this.routes.unshift({ method: method.toUpperCase(), path, respond: responder });
   }
 
-  /** Als `RESTOptions.makeRequest` an den discord.js-Client übergeben. */
+  /** Passed to the discord.js client as `RESTOptions.makeRequest`. */
   makeRequest: MakeRequest = async (url, init) => {
     if (url.includes("/gateway/bot")) {
       return jsonResponse(200, this.gatewayBotInfo);
@@ -125,7 +125,7 @@ export class RestAdapter {
     return emptyResponse;
   };
 
-  /** Die Nachricht, die Discord für einen Send/Edit zurückgibt: der gesendete Body auf einer vollständigen `APIMessage`. */
+  /** The message Discord returns for a send/edit: the sent body on top of a complete `APIMessage`. */
   private message(channelId: string | undefined, body: unknown, id: string = snowflake()): unknown {
     const message = {
       ...buildMessage({ id, channel: { id: channelId ?? DEFAULT_IDS.channel }, author: { id: DEFAULT_IDS.bot, username: "probe", bot: true } }),

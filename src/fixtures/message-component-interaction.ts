@@ -13,11 +13,11 @@ import { buildInteractionContext, type InteractionContextOverrides } from "./int
 import { buildMessage } from "./message.js";
 
 /**
- * Fixture-Overrides für Button-/Select-Menu-Interactions: wer klickt/wählt,
- * plus die `messageId` der Nachricht, an der die Komponente hängt (Default
- * `DEFAULT_IDS.message` – passt ohne weiteres Zutun zu einer zuvor über
- * `channel.send(...)` oder `interaction.reply(...)` verschickten Nachricht,
- * solange in einem Test nur eine Nachricht im Spiel ist).
+ * Fixture overrides for button/select menu interactions: who clicks/chooses,
+ * plus the `messageId` of the message the component is attached to (default
+ * `DEFAULT_IDS.message` – matches a message sent earlier via
+ * `channel.send(...)` or `interaction.reply(...)` without further ado, as
+ * long as only one message is involved in a test).
  */
 export interface MessageComponentOverrides extends InteractionContextOverrides {
   messageId?: string;
@@ -33,8 +33,8 @@ function buildComponentInteractionBase(overrides: MessageComponentOverrides) {
 }
 
 /**
- * Baut ein rohes `INTERACTION_CREATE`-Gateway-Dispatch-Event für einen
- * Button-Klick. discord.js baut daraus eine echte `ButtonInteraction`.
+ * Builds a raw `INTERACTION_CREATE` gateway dispatch event for a button
+ * click. discord.js builds a real `ButtonInteraction` from it.
  */
 export function buildButtonInteractionDispatch(
   customId: string,
@@ -54,9 +54,9 @@ export function buildButtonInteractionDispatch(
     authorizing_integration_owners: {},
     attachment_size_limit: 26_214_400,
     channel_id: channel.id,
-    // Siehe interaction.ts: discord-api-types unterscheidet APIChannel je nach
-    // `type` in ~10 konkrete Channel-Interfaces; unser Fixture bleibt bewusst
-    // generisch (nur id/type nötig für discord.js).
+    // See interaction.ts: discord-api-types splits APIChannel by `type` into
+    // ~10 concrete channel interfaces; our fixture deliberately stays generic
+    // (discord.js only needs id/type).
     channel: channel as APIMessageComponentButtonInteraction["channel"],
     guild_id: guild.id,
     guild,
@@ -74,14 +74,14 @@ export function buildButtonInteractionDispatch(
 }
 
 /**
- * Baut ein rohes `INTERACTION_CREATE`-Gateway-Dispatch-Event für eine
- * String-Select-Menu-Auswahl. discord.js baut daraus eine echte
- * `StringSelectMenuInteraction`.
+ * Builds a raw `INTERACTION_CREATE` gateway dispatch event for a string
+ * select menu choice. discord.js builds a real `StringSelectMenuInteraction`
+ * from it.
  *
- * Andere Select-Typen (User/Role/Mentionable/Channel-Select) sind noch nicht
- * abgedeckt – String-Select ist der mit Abstand häufigste Fall. Neuen Typ
- * ergänzen: gleiches Muster, anderer `component_type` + `resolved`-Block
- * (siehe `discord-api-types/v10`'s `APIMessage*SelectInteractionData`).
+ * Other select types (user/role/mentionable/channel select) aren't covered
+ * yet – string select is by far the most common case. To add a new type:
+ * same pattern, different `component_type` + `resolved` block (see
+ * `discord-api-types/v10`'s `APIMessage*SelectInteractionData`).
  */
 export function buildSelectMenuInteractionDispatch(
   customId: string,

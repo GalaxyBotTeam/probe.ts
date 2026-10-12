@@ -1,40 +1,38 @@
 # `src/core/`
 
-Der einzige öffentliche Einstiegspunkt: `createProbe(client)`.
+The only public entry point: `createProbe(client)`.
 
 ## `probe.ts`
 
-`createProbe()` verdrahtet die zwei Fake-Adapter aus `../transport/` in
-einen echten discord.js-`Client`, **bevor** `setup()` `client.login()`
-aufruft – der Bot-Code selbst (der Client + seine Event-Listener) bleibt
-komplett unangetastet.
+`createProbe()` wires the two fake adapters from `../transport/` into a real
+discord.js `Client` **before** `setup()` calls `client.login()` – the bot
+code itself (the client + its event listeners) stays completely untouched.
 
-`Probe` ist die einzige Schnittstelle, mit der Testcode arbeitet:
+`Probe` is the only interface test code works with:
 
-| Methode                | Zweck                                                              |
+| Method                  | Purpose                                                             |
 | ----------------------- | ------------------------------------------------------------------- |
-| `setup()`/`teardown()`  | Lifecycle – Fake-Login + Ready-Handshake / sauberes Abräumen        |
-| `login()` + `ready()`   | `setup()` in zwei Schritten – für Bots, die Handler erst nach `client.login()` registrieren (Login im Bot-Bootstrap, `ready()` danach) |
-| `injectDispatch(...)`   | Rohes Gateway-Dispatch injizieren (generischer Fall)                |
-| `emit(name, overrides)` | Generisches Event über Fixture-Builder (`guildMemberAdd`, ...) – siehe `../events/README.md` |
-| `slashCommand(name)`    | Fluent Slash-Command-Aufruf – siehe `../interactions/README.md`     |
-| `button(customId)`/`selectMenu(customId)`/`modal(customId)` | Fluent Component-/Modal-Aufruf – siehe `../interactions/README.md` |
-| `capturedRequests()`    | Alle abgefangenen REST-Calls, roh                                   |
-| `lastReply()`/`allReplies()` | Geparste Interaction-Antworten (`reply`/`editReply`)           |
-| `lastModal()`/`allModals()` | Geparste `showModal(...)`-Aufrufe                               |
+| `setup()`/`teardown()`  | Lifecycle – fake login + ready handshake / clean teardown           |
+| `login()` + `ready()`   | `setup()` in two steps – for bots that register handlers only after `client.login()` (login in the bot bootstrap, `ready()` afterwards) |
+| `injectDispatch(...)`   | Inject a raw gateway dispatch (generic case)                        |
+| `emit(name, overrides)` | Generic event via fixture builders (`guildMemberAdd`, ...) – see `../events/README.md` |
+| `slashCommand(name)`    | Fluent slash command invocation – see `../interactions/README.md`   |
+| `button(customId)`/`selectMenu(customId)`/`modal(customId)` | Fluent component/modal invocation – see `../interactions/README.md` |
+| `capturedRequests()`    | All captured REST calls, raw                                        |
+| `lastReply()`/`allReplies()` | Parsed interaction replies (`reply`/`editReply`)               |
+| `lastModal()`/`allModals()` | Parsed `showModal(...)` calls                                   |
 
-Slash-Command-/Button-/Select-Menu-/Modal-Aufrufe sähen dabei intern
-unsichtbar die Guild der Interaction samt Channel vor (`injectInteraction()`,
-verwendet `buildGuildCreateDispatch` aus `../fixtures/`) – sonst löst
-`interaction.channel`/`interaction.guild` nicht auf (siehe
-`../events/README.md` für dieselbe Regel bei Gateway-Events). Der rohe
-`injectDispatch()` bleibt bewusst ohne dieses Seeding.
+Slash command/button/select menu/modal invocations invisibly seed the
+interaction's guild and channel first (`injectInteraction()`, uses
+`buildGuildCreateDispatch` from `../fixtures/`) – otherwise
+`interaction.channel`/`interaction.guild` don't resolve (see
+`../events/README.md` for the same rule for gateway events). The raw
+`injectDispatch()` deliberately stays without this seeding.
 
-## Warum hier und nicht in `transport/`?
+## Why here and not in `transport/`?
 
-`transport/` kennt nur die zwei Adapter, keine Slash-Command- oder
-Event-Semantik. `core/probe.ts` ist die Komposition: Adapter +
-Interaction-/Event-Helfer (`../interactions/`, `../events/`) zu einer
-einzigen, einfachen `Probe`-API. Neue Feature-Bereiche (Prefix-Commands,
-Reactions, ...) bekommen eigene Helfer-Module und werden hier nur
-verdrahtet – `createProbe()` selbst soll klein bleiben.
+`transport/` only knows the two adapters, no slash command or event
+semantics. `core/probe.ts` is the composition: adapters + interaction/event
+helpers (`../interactions/`, `../events/`) into one simple `Probe` API. New
+feature areas (prefix commands, reactions, ...) get their own helper modules
+and are only wired up here – `createProbe()` itself should stay small.

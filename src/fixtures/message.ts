@@ -3,7 +3,7 @@ import { DEFAULT_IDS } from "./ids.js";
 import { buildChannel, type ChannelFixture } from "./channel.js";
 import { buildUser } from "./user.js";
 
-/** Fixture-Overrides für `buildMessage` – jedes Feld einzeln überschreibbar. */
+/** Fixture overrides for `buildMessage` – every field overridable on its own. */
 export interface MessageOverrides {
   id?: string;
   content?: string;
@@ -12,10 +12,10 @@ export interface MessageOverrides {
 }
 
 /**
- * Baut eine rohe `APIMessage` mit sinnvollen Defaults. Gemeinsamer Unterbau
- * für `MESSAGE_CREATE`-Dispatches (`message-events.ts`) und für das
- * `message`-Feld einer Component-Interaction (`message-component-interaction.ts`) –
- * discord.js verlangt dort jeweils eine vollständige `APIMessage`.
+ * Builds a raw `APIMessage` with sensible defaults. Shared foundation for
+ * `MESSAGE_CREATE` dispatches (`message-events.ts`) and for the `message`
+ * field of a component interaction (`message-component-interaction.ts`) –
+ * discord.js requires a complete `APIMessage` in both places.
  */
 export function buildMessage(overrides: MessageOverrides = {}): APIMessage {
   const channel = buildChannel(overrides.channel);

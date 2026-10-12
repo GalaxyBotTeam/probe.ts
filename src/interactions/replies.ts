@@ -1,18 +1,18 @@
 import { ComponentType, InteractionResponseType } from "discord-api-types/v10";
 import type { CapturedRequest } from "../transport/rest-adapter.js";
 
-/** Der Nachrichteninhalt einer Antwort – Rohform des Discord-Message-Payloads. */
+/** The message content of a reply – raw form of the Discord message payload. */
 export type ReplyContent = Record<string, unknown>;
 
 const CALLBACK_URL = /\/interactions\/[^/]+\/[^/]+\/callback(?:\?|$)/;
 const EDIT_ORIGINAL_URL = /\/webhooks\/[^/]+\/[^/]+\/messages\/(?:@|%40)original(?:\?|$)/;
 
 /**
- * Liest den Antwort-Inhalt aus einem abgefangenen REST-Call, falls es einer
- * ist – `reply()`/`deferReply({ ... })` (POST `.../callback`, Typ
- * `ChannelMessageWithSource`) oder `editReply()` (PATCH
- * `.../messages/@original`). Ein reines `deferReply()` ohne Inhalt liefert
- * `undefined` – es ist noch keine sichtbare Antwort.
+ * Reads the reply content from a captured REST call, if it is one –
+ * `reply()`/`deferReply({ ... })` (POST `.../callback`, type
+ * `ChannelMessageWithSource`) or `editReply()` (PATCH
+ * `.../messages/@original`). A plain `deferReply()` without content returns
+ * `undefined` – it isn't a visible reply yet.
  */
 export function parseReply(request: CapturedRequest): ReplyContent | undefined {
   if (CALLBACK_URL.test(request.url)) {
@@ -29,11 +29,11 @@ export function parseReply(request: CapturedRequest): ReplyContent | undefined {
 }
 
 /**
- * Rohform einer Message-Komponente – bewusst locker typisiert (`unknown`
- * statt eines konkreten `discord-api-types`-Unions), weil `extractText`
- * rekursiv über *jede* Komponenten-Art laufen muss (Container, Section,
- * ActionRow, TextDisplay, ...) und nur an `type`/`content`/`components`
- * interessiert ist – der Rest ist für diesen einen Zweck irrelevant.
+ * Raw form of a message component – deliberately loosely typed (`unknown`
+ * instead of a concrete `discord-api-types` union), because `extractText`
+ * has to walk *every* component kind recursively (container, section,
+ * action row, text display, ...) and only cares about
+ * `type`/`content`/`components` – the rest is irrelevant for this purpose.
  */
 interface RawComponent {
   type?: number;
@@ -58,17 +58,17 @@ function collectText(component: unknown, into: string[]): void {
 }
 
 /**
- * Extrahiert den sichtbaren Text einer Antwort – funktioniert für
- * klassische `content`-Nachrichten genauso wie für Components-V2-Antworten
- * (`Container`/`Section`/`TextDisplay`, das `content`-Feld bleibt bei denen
- * leer). Reihenfolge: zuerst `content`, danach jedes `TextDisplay` in
- * Lesereihenfolge, rekursiv aus verschachtelten Containern/Sections geholt
- * – mehrere Textstücke durch `"\n"` getrennt.
+ * Extracts the visible text of a reply – works for classic `content`
+ * messages just as well as for Components V2 replies
+ * (`Container`/`Section`/`TextDisplay`, where the `content` field stays
+ * empty). Order: `content` first, then every `TextDisplay` in reading order,
+ * collected recursively from nested containers/sections – multiple text
+ * pieces joined with `"\n"`.
  *
- * Buttons/Select-Menus in einer `ActionRow` innerhalb eines Containers
- * haben kein `content` und tauchen hier absichtlich nicht auf – dafür
- * `probe.button(...)`/`probe.selectMenu(...)` verwenden, die brauchen den
- * Text nicht.
+ * Buttons/select menus in an `ActionRow` inside a container have no
+ * `content` and deliberately don't show up here – use
+ * `probe.button(...)`/`probe.selectMenu(...)` for those, they don't need the
+ * text.
  */
 export function extractText(reply: ReplyContent): string {
   const parts: string[] = [];
@@ -85,16 +85,16 @@ export function extractText(reply: ReplyContent): string {
   return parts.join("\n");
 }
 
-/** Die Kerndaten eines per `interaction.showModal(...)` gezeigten Modals. */
+/** The core data of a modal shown via `interaction.showModal(...)`. */
 export interface ModalContent {
   customId: string;
   title: string;
 }
 
 /**
- * Liest die Modal-Daten aus einem abgefangenen REST-Call, falls
- * `interaction.showModal(...)` ihn ausgelöst hat (POST `.../callback`, Typ
- * `Modal`). Sonst `undefined`.
+ * Reads the modal data from a captured REST call, if
+ * `interaction.showModal(...)` triggered it (POST `.../callback`, type
+ * `Modal`). Otherwise `undefined`.
  */
 export function parseModal(request: CapturedRequest): ModalContent | undefined {
   if (!CALLBACK_URL.test(request.url)) {

@@ -11,20 +11,19 @@ import { DEFAULT_IDS } from "./ids.js";
 import { buildMember } from "./member.js";
 import { buildUser } from "./user.js";
 
-/** Fixture-Overrides für `buildGuildMemberAddDispatch`/`buildGuildMemberRemoveDispatch`. */
+/** Fixture overrides for `buildGuildMemberAddDispatch`/`buildGuildMemberRemoveDispatch`. */
 export interface GuildMemberAddOverrides {
   user?: Partial<APIUser>;
   guildId?: string;
 }
 
-/** `GuildMemberRemoveOverrides` hat dieselbe Form wie `GuildMemberAddOverrides` – eigener Name für Klarheit an den Call-Sites. */
+/** `GuildMemberRemoveOverrides` has the same shape as `GuildMemberAddOverrides` – its own name for clarity at the call sites. */
 export type GuildMemberRemoveOverrides = GuildMemberAddOverrides;
 
 /**
- * Baut ein rohes `GUILD_MEMBER_ADD`-Gateway-Dispatch-Event. Setzt voraus,
- * dass die Guild bereits im Client-Cache bekannt ist (siehe
- * `buildGuildCreateDispatch`) – `probe.emit("guildMemberAdd", ...)`
- * übernimmt das automatisch.
+ * Builds a raw `GUILD_MEMBER_ADD` gateway dispatch event. Requires the guild
+ * to be known in the client cache already (see `buildGuildCreateDispatch`) –
+ * `probe.emit("guildMemberAdd", ...)` takes care of that automatically.
  */
 export function buildGuildMemberAddDispatch(overrides: GuildMemberAddOverrides = {}): GatewayGuildMemberAddDispatch {
   const member = buildMember(overrides.user ? { user: buildUser(overrides.user) } : {});
@@ -39,10 +38,10 @@ export function buildGuildMemberAddDispatch(overrides: GuildMemberAddOverrides =
 }
 
 /**
- * Baut ein rohes `GUILD_MEMBER_REMOVE`-Gateway-Dispatch-Event. discord.js
- * emittiert nur ein echtes `GuildMember`-Objekt, wenn das Mitglied schon im
- * Guild-Members-Cache bekannt war – `probe.emit("guildMemberRemove", ...)`
- * sät dafür passend über `buildGuildCreateDispatch({ members: [...] })` vor.
+ * Builds a raw `GUILD_MEMBER_REMOVE` gateway dispatch event. discord.js only
+ * emits a real `GuildMember` object if the member was already known in the
+ * guild members cache – `probe.emit("guildMemberRemove", ...)` seeds that
+ * beforehand via `buildGuildCreateDispatch({ members: [...] })`.
  */
 export function buildGuildMemberRemoveDispatch(
   overrides: GuildMemberRemoveOverrides = {},

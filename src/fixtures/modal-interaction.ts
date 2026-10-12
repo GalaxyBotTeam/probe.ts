@@ -12,21 +12,21 @@ import { DEFAULT_IDS, snowflake } from "./ids.js";
 import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
 
 /**
- * Fixture-Overrides für `buildModalSubmitInteractionDispatch`: wer
- * absendet, plus die `fields` – Name→Wert-Paare, ein Eintrag pro
- * Text-Input im Modal (`custom_id` → eingegebener Text).
+ * Fixture overrides for `buildModalSubmitInteractionDispatch`: who submits,
+ * plus the `fields` – name→value pairs, one entry per text input in the modal
+ * (`custom_id` → entered text).
  */
 export interface ModalSubmitOverrides extends InteractionContextOverrides {
   fields?: Record<string, string>;
 }
 
 /**
- * Baut ein rohes `INTERACTION_CREATE`-Gateway-Dispatch-Event für einen
- * Modal-Submit. discord.js baut daraus eine echte `ModalSubmitInteraction`;
- * `interaction.fields.getTextInputValue(customId)` liest die übergebenen
- * `fields` aus. Jedes Feld landet als eigene `ActionRow` mit einem
- * `TextInput` darin – das klassische, seit Modals stabile Format (nicht das
- * neuere Components-v2-`Label`-Wrapping).
+ * Builds a raw `INTERACTION_CREATE` gateway dispatch event for a modal
+ * submit. discord.js builds a real `ModalSubmitInteraction` from it;
+ * `interaction.fields.getTextInputValue(customId)` reads the given `fields`.
+ * Each field becomes its own `ActionRow` with a `TextInput` inside – the
+ * classic format, stable since modals exist (not the newer Components v2
+ * `Label` wrapping).
  */
 export function buildModalSubmitInteractionDispatch(
   customId: string,
@@ -47,11 +47,11 @@ export function buildModalSubmitInteractionDispatch(
     authorizing_integration_owners: {},
     attachment_size_limit: 26_214_400,
     channel_id: channel.id,
-    // Anders als bei Slash-Command-/Component-Interactions ist `channel` in
-    // `APIModalSubmitInteraction` optional – hier trotzdem gesetzt (Realismus,
-    // `interaction.channel` funktioniert nach dem Submit), daher der Cast auf
-    // die konkrete (nicht-optionale) Channel-Shape statt auf den Interaction-
-    // eigenen (optionalen) Feldtyp.
+    // Unlike slash command/component interactions, `channel` is optional in
+    // `APIModalSubmitInteraction` – set anyway here (realism,
+    // `interaction.channel` works after the submit), hence the cast to the
+    // concrete (non-optional) channel shape instead of the interaction's own
+    // (optional) field type.
     channel: channel as Partial<APIChannel> & Pick<APIChannel, "id" | "type">,
     guild_id: guild.id,
     guild,

@@ -2,8 +2,8 @@ import type { APIUser } from "discord-api-types/v10";
 import { DEFAULT_IDS } from "./ids.js";
 
 /**
- * Baut einen `APIUser`-Payload mit sinnvollen Defaults. Jedes Feld ist über
- * `overrides` änderbar.
+ * Builds an `APIUser` payload with sensible defaults. Every field can be
+ * changed via `overrides`.
  */
 export function buildUser(overrides: Partial<APIUser> = {}): APIUser {
   return {

@@ -7,32 +7,32 @@ import { buildSlashCommandInteractionDispatch } from "../src/fixtures/interactio
 import { buildMember } from "../src/fixtures/member.js";
 import { buildUser } from "../src/fixtures/user.js";
 
-describe("Fixture-Builder", () => {
-  it("buildUser: hat Defaults, alles überschreibbar", () => {
+describe("Fixture builders", () => {
+  it("buildUser: has defaults, everything overridable", () => {
     expect(buildUser()).toMatchObject({ id: DEFAULT_IDS.user, username: "tester" });
     expect(buildUser({ username: "anna" })).toMatchObject({ id: DEFAULT_IDS.user, username: "anna" });
   });
 
-  it("buildGuild: hat Defaults, alles überschreibbar", () => {
+  it("buildGuild: has defaults, everything overridable", () => {
     expect(buildGuild({ id: "42" })).toMatchObject({ id: "42", features: [] });
   });
 
-  it("buildChannel: hat Defaults, alles überschreibbar", () => {
+  it("buildChannel: has defaults, everything overridable", () => {
     expect(buildChannel()).toMatchObject({ id: DEFAULT_IDS.channel, type: ChannelType.GuildText });
     expect(buildChannel({ type: ChannelType.GuildVoice })).toMatchObject({ type: ChannelType.GuildVoice });
   });
 
-  it("buildMember: übernimmt einen übergebenen User statt den Default-User zu bauen", () => {
+  it("buildMember: takes a given user instead of building the default user", () => {
     const member = buildMember({ user: buildUser({ id: "99" }) });
     expect(member.user.id).toBe("99");
     expect(member.roles).toEqual([]);
   });
 
-  it("buildSlashCommandInteractionDispatch: baut eine Guild-Interaction mit den übergebenen Optionen", () => {
-    const dispatch = buildSlashCommandInteractionDispatch("greet", { options: { name: "anna", laut: true, menge: 3 } });
+  it("buildSlashCommandInteractionDispatch: builds a guild interaction with the given options", () => {
+    const dispatch = buildSlashCommandInteractionDispatch("greet", { options: { name: "anna", loud: true, amount: 3 } });
     const interaction = dispatch.d;
     if (!("data" in interaction) || interaction.type !== InteractionType.ApplicationCommand || !interaction.data) {
-      throw new Error("erwartete eine ApplicationCommand-Interaction mit data");
+      throw new Error("expected an ApplicationCommand interaction with data");
     }
     expect(interaction.data.name).toBe("greet");
     expect(interaction.guild_id).toBe(DEFAULT_IDS.guild);
@@ -40,16 +40,16 @@ describe("Fixture-Builder", () => {
     expect(interaction.data).toMatchObject({
       options: [
         { name: "name", type: ApplicationCommandOptionType.String, value: "anna" },
-        { name: "laut", type: ApplicationCommandOptionType.Boolean, value: true },
-        { name: "menge", type: ApplicationCommandOptionType.Number, value: 3 },
+        { name: "loud", type: ApplicationCommandOptionType.Boolean, value: true },
+        { name: "amount", type: ApplicationCommandOptionType.Number, value: 3 },
       ],
     });
   });
 
-  it("buildSlashCommandInteractionDispatch: verschachtelt Optionen in Subcommand-Gruppe und Subcommand", () => {
-    const interaction = buildSlashCommandInteractionDispatch("ticket admin close", { options: { grund: "spam" } }).d;
+  it("buildSlashCommandInteractionDispatch: nests options into subcommand group and subcommand", () => {
+    const interaction = buildSlashCommandInteractionDispatch("ticket admin close", { options: { reason: "spam" } }).d;
     if (!("data" in interaction) || interaction.type !== InteractionType.ApplicationCommand || !interaction.data) {
-      throw new Error("erwartete eine ApplicationCommand-Interaction mit data");
+      throw new Error("expected an ApplicationCommand interaction with data");
     }
     expect(interaction.data).toMatchObject({
       name: "ticket",
@@ -61,16 +61,16 @@ describe("Fixture-Builder", () => {
             {
               name: "close",
               type: ApplicationCommandOptionType.Subcommand,
-              options: [{ name: "grund", type: ApplicationCommandOptionType.String, value: "spam" }],
+              options: [{ name: "reason", type: ApplicationCommandOptionType.String, value: "spam" }],
             },
           ],
         },
       ],
     });
-    expect(() => buildSlashCommandInteractionDispatch("a b c d")).toThrow(/höchstens/);
+    expect(() => buildSlashCommandInteractionDispatch("a b c d")).toThrow(/at most/);
   });
 
-  it("snowflake: eindeutig, mit lesbarem Zeitstempel", () => {
+  it("snowflake: unique, with a readable timestamp", () => {
     const at = Date.UTC(2026, 0, 1);
     const ids = new Set([snowflake(at), snowflake(at), snowflake(at)]);
     expect(ids.size).toBe(3);
@@ -79,11 +79,11 @@ describe("Fixture-Builder", () => {
     }
   });
 
-  it("buildSlashCommandInteractionDispatch: jede Interaction bekommt eine frische Snowflake-Id", () => {
+  it("buildSlashCommandInteractionDispatch: every interaction gets a fresh snowflake id", () => {
     const first = buildSlashCommandInteractionDispatch("ping").d.id;
     const second = buildSlashCommandInteractionDispatch("ping").d.id;
     expect(first).not.toBe(second);
-    // discord.js' createdTimestamp kommt aus der Id – Bots verwerfen sonst "alte" Interactions
+    // discord.js' createdTimestamp comes from the id – otherwise bots drop "old" interactions
     expect(Date.now() - Number((BigInt(first) >> 22n) + 1_420_070_400_000n)).toBeLessThan(1_000);
   });
 });

@@ -1,10 +1,10 @@
 import { Client, GatewayIntentBits } from "discord.js";
 
 /**
- * Minimaler Beispiel-Bot: begrüßt neu beigetretene Mitglieder in einem
- * festen Channel – dient als Referenz-Beispiel für die generische
- * Event-API von probe.ts (`probe.emit("guildMemberAdd", ...)`). Der Channel
- * kommt wie bei echten Bots aus der Config.
+ * Minimal example bot: greets newly joined members in a fixed channel –
+ * serves as the reference example for probe.ts's generic event API
+ * (`probe.emit("guildMemberAdd", ...)`). Like with real bots, the channel
+ * comes from the config.
  */
 export function createWelcomeBot(welcomeChannelId: string): Client {
   const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
@@ -12,7 +12,7 @@ export function createWelcomeBot(welcomeChannelId: string): Client {
   client.on("guildMemberAdd", async (member) => {
     const channel = member.guild.channels.cache.get(welcomeChannelId);
     if (channel?.isTextBased()) {
-      await channel.send(`👋 Willkommen, ${member}!`);
+      await channel.send(`👋 Welcome, ${member}!`);
     }
   });
 

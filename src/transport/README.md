@@ -1,78 +1,76 @@
 # `src/transport/`
 
-Die zwei Grenzen, an denen probe.ts discord.js faked – der Rest von
-discord.js läuft echt. Siehe `CLAUDE.md` für das Kern-Prinzip.
+The two boundaries where probe.ts fakes discord.js – the rest of discord.js
+runs for real. See `CLAUDE.md` for the core principle.
 
 ```mermaid
 flowchart LR
-    Test["Testcode"]
+    Test["Test code"]
 
-    subgraph Probe["probe.ts – hier greifen wir ein"]
+    subgraph Probe["probe.ts – this is where we step in"]
         direction TB
         GA["GatewayAdapter<br/>fake @discordjs/ws"]
         RA["RestAdapter<br/>fake @discordjs/rest"]
     end
 
-    Client["discord.js Client<br/>+ dein Bot-Code"]
+    Client["discord.js Client<br/>+ your bot code"]
     Discord[("Discord")]
 
     Test -->|"① injectDispatch()/emit()/slashCommand()"| GA
-    GA -->|"② Gateway-Event"| Client
-    Client -->|"③ REST-Call (reply/send/...)"| RA
+    GA -->|"② gateway event"| Client
+    Client -->|"③ REST call (reply/send/...)"| RA
     RA -->|"④ capturedRequests()/lastReply()"| Test
-    Client -.->|"nie kontaktiert"| Discord
+    Client -.->|"never contacted"| Discord
 ```
 
-## `gateway-adapter.ts` – eingehend
+## `gateway-adapter.ts` – incoming
 
-`GatewayAdapter` implementiert `@discordjs/ws`'s `IShardingStrategy` und
-wird über `client.options.ws.buildStrategy` eingehängt. Statt Sockets zu
-öffnen, hält er nur eine Referenz auf den `WebSocketManager`, den
-discord.js selbst baut, und emittiert Gateway-Events direkt auf diesem
-Manager – genau das, was `SimpleShardingStrategy` intern auch tut.
-discord.js verarbeitet die Events über seinen echten `handlePacket`/
-Actions-Pfad und baut daraus echte Model-Objekte (`Message`,
-`ChatInputCommandInteraction`, `GuildMember`, ...).
+`GatewayAdapter` implements `@discordjs/ws`'s `IShardingStrategy` and is
+hooked in via `client.options.ws.buildStrategy`. Instead of opening sockets,
+it only holds a reference to the `WebSocketManager` discord.js builds itself,
+and emits gateway events directly on that manager – exactly what
+`SimpleShardingStrategy` does internally too. discord.js processes the
+events through its real `handlePacket`/actions path and builds real model
+objects from them (`Message`, `ChatInputCommandInteraction`, `GuildMember`,
+...).
 
-Zwei Methoden:
+Two methods:
 
-- `injectReady(data)` – fährt Shard 0 hoch (`Ready`-Event + Dispatch
-  `{t: 'READY'}`). Nur beim `setup()`-Handshake gebraucht.
-- `injectDispatch(payload)` – der generische Fall. Reicht für praktisch
-  jedes neue Event: nur eine neue Test-Payload nötig, keine neue Methode
-  (siehe `build-gateway-payload`-Skill).
+- `injectReady(data)` – brings shard 0 up (`Ready` event + dispatch
+  `{t: 'READY'}`). Only needed for the `setup()` handshake.
+- `injectDispatch(payload)` – the generic case. Enough for practically every
+  new event: only a new test payload needed, no new method (see the
+  `build-gateway-payload` skill).
 
-## `rest-adapter.ts` – ausgehend
+## `rest-adapter.ts` – outgoing
 
-`RestAdapter.makeRequest` ersetzt `@discordjs/rest`'s echten
-undici-Transport (`RESTOptions.makeRequest`). Zeichnet jeden ausgehenden
-Call in `requests` auf und beantwortet ihn, ohne Netzwerk:
+`RestAdapter.makeRequest` replaces `@discordjs/rest`'s real undici transport
+(`RESTOptions.makeRequest`). Records every outgoing call in `requests` and
+answers it without network:
 
-- `/gateway/bot` (fragt `client.login()` vor dem Verbindungsaufbau ab) –
-  Fake-Wert, wird nicht aufgezeichnet
-- Routen, auf die Discord mit einer Nachricht antwortet (`POST`/`PATCH`
-  `/channels/:id/messages…`, `followUp()`/`editReply()` über
-  `/webhooks/…`) – eine vollständige `APIMessage` mit frischer Snowflake und
-  dem gesendeten Body; die Id merkt sich `lastMessageId` als Default-Ziel für
+- `/gateway/bot` (fetched by `client.login()` before connecting) – fake
+  value, not recorded
+- routes Discord answers with a message (`POST`/`PATCH`
+  `/channels/:id/messages…`, `followUp()`/`editReply()` via `/webhooks/…`) –
+  a complete `APIMessage` with a fresh snowflake and the sent body; the id is
+  kept in `lastMessageId` as the default target for
   `probe.button()`/`selectMenu()`
-- über `probe.respond(method, pfad, responder)` hinterlegte Routen (Vorrang
-  vor den eingebauten), z.B. Listen, die der Bot per `GET` lädt
-- alles andere: leere 204-Antwort
+- routes registered via `probe.respond(method, path, responder)` (take
+  precedence over the built-in ones), e.g. lists the bot loads via `GET`
+- everything else: empty 204 response
 
-## Erweiterungspunkt
+## Extension point
 
-Neue Interaktions-/Event-Art (Buttons, Modals, Prefix-Commands,
-Reactions, ...)? Fast immer reicht eine neue rohe Test-Payload –
-**kein** Adapter-Change nötig. Eine neue Adapter-Methode ist nur
-gerechtfertigt, wenn das Event einen Mehrschritt-Tanz braucht wie
-`injectReady`. Details + Checkliste: `.claude/skills/
-transport-boundary-check/SKILL.md`.
+New interaction/event kind (buttons, modals, prefix commands, reactions,
+...)? Almost always a new raw test payload is enough – **no** adapter change
+needed. A new adapter method is only justified if the event needs a
+multi-step dance like `injectReady`. Details + checklist:
+`.claude/skills/transport-boundary-check/SKILL.md`.
 
-## Die eine Regel
+## The one rule
 
-**Nie** eine discord.js-Model-Klasse selbst mocken. Immer nur rohe
-Gateway-/REST-Payloads injizieren bzw. abfangen und discord.js echte
-Objekte daraus bauen lassen. Adapter bleiben intern – `GatewayAdapter`/
-`RestAdapter` selbst sind nie Teil der öffentlichen API (`src/index.ts`
-exportiert Fixture-Builder, Invocation-Typen etc., aber nie die Adapter
-direkt).
+**Never** mock a discord.js model class yourself. Always only inject or
+capture raw gateway/REST payloads and let discord.js build real objects from
+them. Adapters stay internal – `GatewayAdapter`/`RestAdapter` themselves are
+never part of the public API (`src/index.ts` exports fixture builders,
+invocation types etc., but never the adapters directly).

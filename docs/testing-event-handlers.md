@@ -1,28 +1,28 @@
-# Event-Handler testen
+# Testing event handlers
 
-Neben Slash Commands kann probe.ts generische Gateway-Events injizieren –
+Besides slash commands, probe.ts can inject generic gateway events –
 `guildMemberAdd`, `guildMemberRemove`, `messageCreate`, `messageDelete`,
-`messageReactionAdd`, `messageReactionRemove`. Das deckt den größten Teil
-klassischer Hobby-Bot-Logik ab: Welcome-Messages, Goodbye-Messages,
-Prefix-Commands, Reaction-Roles, einfache Logging-Handler.
+`messageReactionAdd`, `messageReactionRemove`. That covers most classic
+hobby bot logic: welcome messages, goodbye messages, prefix commands,
+reaction roles, simple logging handlers.
 
-**Prefix-Commands sind kein eigenes Event.** Anders als Slash Commands
-(eine echte Discord-Interaction mit Callback-Contract) ist ein
-Prefix-Command (`!ping`) nur eine normale Nachricht, die dein Bot-Code
-selbst parst (`message.content.startsWith("!")`). Zum Testen reicht
-`messageCreate` mit passendem `content` – kein eigener Fixture-Builder,
-keine eigene `Probe`-Methode nötig:
+**Prefix commands aren't an event of their own.** Unlike slash commands (a
+real Discord interaction with a callback contract), a prefix command
+(`!ping`) is just a normal message your bot code parses itself
+(`message.content.startsWith("!")`). To test it, `messageCreate` with the
+matching `content` is enough – no fixture builder or `Probe` method of its
+own needed:
 
 ```ts
-probe.emit("messageCreate", { content: "!rollen" });
+probe.emit("messageCreate", { content: "!roles" });
 ```
 
-Auf echtem Discord braucht `message.content` außerhalb von DMs das
-privilegierte `MessageContent`-Intent (`GatewayIntentBits.MessageContent`)
-– probe.ts umgeht das (kein echter Intent-Filter beim Fake-Transport),
-im echten Bot vergisst man's aber gern.
+On real Discord, `message.content` outside of DMs needs the privileged
+`MessageContent` intent (`GatewayIntentBits.MessageContent`) – probe.ts
+bypasses that (no real intent filter in the fake transport), but it's easy
+to forget in the real bot.
 
-## Grundprinzip
+## Basic principle
 
 ```ts
 probe.emit("guildMemberAdd", { user: { username: "anna" } });
@@ -32,84 +32,81 @@ await vi.waitFor(() => {
 });
 ```
 
-`emit()` ist **synchron**, genau wie `injectDispatch()` – es injiziert das
-Event und kehrt sofort zurück. Reagiert der Bot asynchron (z.B. via
-`interaction.reply()` oder `channel.send()`), muss wie gewohnt mit
-`vi.waitFor(...)` gewartet werden (siehe
-`.claude/rules/test-conventions.md`).
+`emit()` is **synchronous**, just like `injectDispatch()` – it injects the
+event and returns right away. If the bot reacts asynchronously (e.g. via
+`interaction.reply()` or `channel.send()`), wait as usual with
+`vi.waitFor(...)` (see `.claude/rules/test-conventions.md`).
 
-Anders als bei `slashCommand().invoke()` gibt es hier kein `lastReply()` –
-das ist nur für Interaction-Antworten (Callback/`editReply`) gebaut. Ein
-`channel.send(...)` landet als eigener REST-Call in
-`probe.capturedRequests()`; dessen `body` prüfen:
+Unlike `slashCommand().invoke()`, there's no `lastReply()` here – that's
+built for interaction replies only (callback/`editReply`). A
+`channel.send(...)` ends up as its own REST call in
+`probe.capturedRequests()`; check its `body`:
 
 ```ts
 const body = probe.capturedRequests().at(-1)?.body as { content?: string };
-expect(body.content).toBe("👋 Willkommen, <@1>!");
+expect(body.content).toBe(`👋 Welcome, <@${DEFAULT_IDS.user}>!`);
 ```
 
-## Unterstützte Events
+## Supported events
 
-| Event               | Overrides                                    |
-| ------------------- | --------------------------------------------- |
-| `guildMemberAdd`    | `{ user?, guildId? }`                         |
-| `guildMemberRemove` | `{ user?, guildId? }`                         |
-| `messageCreate`     | `{ id?, content?, author?, channel?, guildId? }` |
-| `messageDelete`     | `{ id?, channel?, guildId? }`                 |
-| `messageReactionAdd` | `{ emoji?, user?, messageId?, channel?, guildId? }` |
+| Event                   | Overrides                                           |
+| ----------------------- | --------------------------------------------------- |
+| `guildMemberAdd`        | `{ user?, guildId? }`                               |
+| `guildMemberRemove`     | `{ user?, guildId? }`                               |
+| `messageCreate`         | `{ id?, content?, author?, channel?, guildId? }`    |
+| `messageDelete`         | `{ id?, channel?, guildId? }`                       |
+| `messageReactionAdd`    | `{ emoji?, user?, messageId?, channel?, guildId? }` |
 | `messageReactionRemove` | `{ emoji?, user?, messageId?, channel?, guildId? }` |
 
-Alle Felder sind optional und haben dieselben Defaults wie die übrigen
-Fixture-Builder (z.B. `id: "1"`, `emoji: "👍"`).
+All fields are optional and have the same defaults as the other fixture
+builders (IDs from `DEFAULT_IDS`, `emoji: "👍"`).
 
-## Die versteckte Discord-Regel: Guild muss bekannt sein
+## The hidden Discord rule: the guild must be known
 
-discord.js braucht eine im Client-Cache bekannte Guild (und für
-Message-/Reaction-Events einen bekannten Channel + eine bekannte
-Nachricht), bevor es `GUILD_MEMBER_ADD`, `GUILD_MEMBER_REMOVE`,
-`MESSAGE_CREATE`, `MESSAGE_DELETE`, `MESSAGE_REACTION_ADD` oder
-`MESSAGE_REACTION_REMOVE` überhaupt verarbeitet – ist die Guild/der
-Channel/die Nachricht unbekannt, wird das Event stillschweigend ignoriert
-(kein Fehler, kein emittiertes Client-Event).
+discord.js needs a guild known in the client cache (and for
+message/reaction events a known channel + a known message) before it
+processes `GUILD_MEMBER_ADD`, `GUILD_MEMBER_REMOVE`, `MESSAGE_CREATE`,
+`MESSAGE_DELETE`, `MESSAGE_REACTION_ADD` or `MESSAGE_REACTION_REMOVE` at all
+– if the guild/channel/message is unknown, the event is silently ignored (no
+error, no emitted client event).
 
-`probe.emit()` nimmt einem das ab: es injiziert automatisch ein passendes
-`GUILD_CREATE`-Event vor dem eigentlichen Event, unsichtbar für den
-Testcode. Mehrere Sonderfälle, die genau die reale Discord-Reihenfolge
-nachbilden:
+`probe.emit()` takes care of that: it automatically injects a matching
+`GUILD_CREATE` event before the actual event, invisible to the test code.
+Several special cases that mirror the real Discord order exactly:
 
-- **`guildMemberRemove`**: discord.js emittiert nur ein echtes
-  `GuildMember`, wenn das Mitglied vorher schon bekannt war. Der
-  vorangestellte `GUILD_CREATE` enthält daher das Mitglied bereits in
-  seiner Members-Liste.
+- **`guildMemberRemove`**: discord.js only emits a real `GuildMember` if the
+  member was known before. The preceding `GUILD_CREATE` therefore already
+  contains the member in its members list.
 - **`messageDelete`/`messageReactionAdd`/`messageReactionRemove`**:
-  discord.js emittiert nur eine echte `Message`, wenn sie vorher schon im
-  Cache war. `probe.emit(...)` injiziert deshalb zuerst ein
-  `MESSAGE_CREATE` mit derselben `id` – wie in echt kann man ja auch keine
-  Nachricht löschen oder mit ihr interagieren, die nie erstellt wurde.
-- **`messageReactionRemove`**: discord.js löst den entfernenden Nutzer nur
-  auf, wenn er schon *global* gecached ist (anders als bei
-  `messageReactionAdd`, das dafür einen `member`-Block mitschickt).
-  `probe.emit("messageReactionRemove", ...)` injiziert deshalb zusätzlich
-  ein vorangestelltes `messageReactionAdd` mit demselben Nutzer/Emoji –
-  wie in echt reagiert man ja erst, bevor man die Reaction zurückzieht.
+  discord.js only emits a real `Message` if it was in the cache before.
+  `probe.emit(...)` therefore first injects a `MESSAGE_CREATE` with the same
+  `id` – just like in reality, you can't delete or interact with a message
+  that was never created.
+- **`messageReactionRemove`**: discord.js only resolves the removing user if
+  they are already cached *globally* (unlike `messageReactionAdd`, which
+  sends a `member` block for that). `probe.emit("messageReactionRemove", ...)`
+  therefore additionally injects a preceding `messageReactionAdd` with the
+  same user/emoji – just like in reality, you react before you take the
+  reaction back.
 
-Achtung bei alldem: löst dein Bot-Code über einen eigenen
-`messageCreate`-/`messageReactionAdd`-Handler auf das vorangestellte
-Seed-Event auch etwas aus, taucht dieser REST-Call ebenfalls in
-`probe.capturedRequests()` auf – bei `messageReactionRemove` also ggf. auf
-die *letzte* Antwort prüfen, nicht auf `capturedRequests()[0]`.
+Watch out with all of this: if your bot code also triggers something on the
+preceding seed event via its own `messageCreate`/`messageReactionAdd`
+handler, that REST call also shows up in `probe.capturedRequests()` – so for
+`messageReactionRemove`, check the *last* response, not
+`capturedRequests()[0]`.
 
-## Beispiele
+## Examples
 
 - `examples/welcome-bot/` + `tests/gateway-events.e2e.test.ts` –
   `guildMemberAdd`/`guildMemberRemove`/`messageCreate`/`messageDelete`
 - `examples/reaction-role-bot/` + `tests/reaction-events.e2e.test.ts` –
-  Prefix-Command (`!rollen`) + Reaction-Role
+  prefix command (`!roles`) + reaction role
   (`messageReactionAdd`/`messageReactionRemove`)
 
-## Eigene Events
+## Custom events
 
-Fehlt ein Event? Neue Fixture-Builder in `src/fixtures/` ergänzen (siehe
-`build-gateway-payload`-Skill) und in `src/events/gateway-event.ts`
-verdrahten – der Fake-WS-Layer selbst (`src/transport/gateway-adapter.ts`)
-muss dafür in aller Regel **nicht** angefasst werden.
+Missing an event? Add new fixture builders in `src/fixtures/` (see the
+`build-gateway-payload` skill) and wire them up in
+`src/events/gateway-event.ts` – the fake WS layer itself
+(`src/transport/gateway-adapter.ts`) usually does **not** need to be touched
+for this.

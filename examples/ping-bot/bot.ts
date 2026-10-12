@@ -1,9 +1,9 @@
 import { Client, GatewayIntentBits } from "discord.js";
 
 /**
- * Minimaler Beispiel-Bot: "ping" antwortet sofort, "echo" zeigt Optionen,
- * "slow" zeigt `deferReply()` + `editReply()` – dient als Referenz-Beispiel
- * für die Slash-Command-API von probe.ts.
+ * Minimal example bot: "ping" replies right away, "echo" shows options,
+ * "slow" shows `deferReply()` + `editReply()` – serves as the reference
+ * example for probe.ts's slash command API.
  */
 export function createPingBot(): Client {
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -23,7 +23,7 @@ export function createPingBot(): Client {
 
     if (interaction.commandName === "slow") {
       await interaction.deferReply();
-      await interaction.editReply("🐢 Fertig!");
+      await interaction.editReply("🐢 Done!");
       return;
     }
   });

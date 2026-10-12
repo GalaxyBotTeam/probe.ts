@@ -1,7 +1,7 @@
 {
   "name": "probe.ts",
   "version": "0.0.0",
-  "description": "Testframework für discord.js-Bots – mockt nur den Transport-Layer (@discordjs/ws / @discordjs/rest), nie die Models.",
+  "description": "Testing framework for discord.js bots – mocks only the transport layer (@discordjs/ws / @discordjs/rest), never the models.",
   "keywords": [
     "discord",
     "discord-bot",

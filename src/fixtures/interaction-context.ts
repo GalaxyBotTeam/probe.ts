@@ -5,10 +5,10 @@ import { buildMember } from "./member.js";
 import { buildUser } from "./user.js";
 
 /**
- * Gemeinsame Overrides für jede Art von Interaction (Slash Command,
- * Button-Klick, Select-Menu-Auswahl, Modal-Submit): wer sie ausgelöst hat
- * und in welchem Channel/welcher Guild. Jede Interaction-Art ergänzt eigene
- * Felder (z.B. `options` bei Slash Commands, `values` bei Select Menus).
+ * Shared overrides for every kind of interaction (slash command, button
+ * click, select menu choice, modal submit): who triggered it and in which
+ * channel/guild. Each interaction kind adds its own fields (e.g. `options`
+ * for slash commands, `values` for select menus).
  */
 export interface InteractionContextOverrides {
   user?: Partial<APIUser>;
@@ -18,9 +18,9 @@ export interface InteractionContextOverrides {
 }
 
 /**
- * Baut Channel/Guild/Member für eine Interaction – der gemeinsame Unterbau,
- * den jeder Interaction-Fixture-Builder (`interaction.ts`,
- * `message-component-interaction.ts`, `modal-interaction.ts`) braucht.
+ * Builds channel/guild/member for an interaction – the shared foundation
+ * every interaction fixture builder (`interaction.ts`,
+ * `message-component-interaction.ts`, `modal-interaction.ts`) needs.
  */
 export function buildInteractionContext(overrides: InteractionContextOverrides = {}): {
   channel: ChannelFixture;

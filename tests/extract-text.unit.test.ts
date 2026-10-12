@@ -3,33 +3,33 @@ import { describe, expect, it } from "vitest";
 import { extractText } from "../src/index.js";
 
 describe("extractText()", () => {
-  it("liest klassisches content", () => {
+  it("reads classic content", () => {
     expect(extractText({ content: "🏓 Pong!" })).toBe("🏓 Pong!");
   });
 
-  it("ignoriert leeres content (Components-V2-Antworten haben immer leeres content)", () => {
+  it("ignores empty content (Components V2 replies always have empty content)", () => {
     expect(extractText({ content: "" })).toBe("");
   });
 
-  it("liest TextDisplay-Komponenten aus einem Container, in Lesereihenfolge", () => {
+  it("reads text display components from a container, in reading order", () => {
     const reply = {
       content: "",
       components: [
         {
           type: ComponentType.Container,
           components: [
-            { type: ComponentType.TextDisplay, content: "🟢 Alle Systeme laufen" },
+            { type: ComponentType.TextDisplay, content: "🟢 All systems operational" },
             { type: ComponentType.Separator },
-            { type: ComponentType.TextDisplay, content: "Uptime: 3 Tage" },
+            { type: ComponentType.TextDisplay, content: "Uptime: 3 days" },
           ],
         },
       ],
     };
 
-    expect(extractText(reply)).toBe("🟢 Alle Systeme laufen\nUptime: 3 Tage");
+    expect(extractText(reply)).toBe("🟢 All systems operational\nUptime: 3 days");
   });
 
-  it("liest TextDisplay-Komponenten auch aus einer Section (Container > Section > TextDisplay)", () => {
+  it("also reads text display components from a section (container > section > text display)", () => {
     const reply = {
       components: [
         {
@@ -37,7 +37,7 @@ describe("extractText()", () => {
           components: [
             {
               type: ComponentType.Section,
-              components: [{ type: ComponentType.TextDisplay, content: "Verschachtelter Text" }],
+              components: [{ type: ComponentType.TextDisplay, content: "Nested text" }],
               accessory: { type: ComponentType.Thumbnail, media: { url: "attachment://icon.png" } },
             },
           ],
@@ -45,20 +45,20 @@ describe("extractText()", () => {
       ],
     };
 
-    expect(extractText(reply)).toBe("Verschachtelter Text");
+    expect(extractText(reply)).toBe("Nested text");
   });
 
-  it("ignoriert Buttons/Select-Menus in einer ActionRow (kein content)", () => {
+  it("ignores buttons/select menus in an action row (no content)", () => {
     const reply = {
-      content: "Wähl eine Farbe:",
+      content: "Pick a color:",
       components: [
         {
           type: ComponentType.ActionRow,
-          components: [{ type: ComponentType.Button, custom_id: "x", style: 1, label: "Klick mich" }],
+          components: [{ type: ComponentType.Button, custom_id: "x", style: 1, label: "Click me" }],
         },
       ],
     };
 
-    expect(extractText(reply)).toBe("Wähl eine Farbe:");
+    expect(extractText(reply)).toBe("Pick a color:");
   });
 });
