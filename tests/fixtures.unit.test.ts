@@ -46,6 +46,30 @@ describe("Fixture-Builder", () => {
     });
   });
 
+  it("buildSlashCommandInteractionDispatch: verschachtelt Optionen in Subcommand-Gruppe und Subcommand", () => {
+    const interaction = buildSlashCommandInteractionDispatch("ticket admin close", { options: { grund: "spam" } }).d;
+    if (!("data" in interaction) || interaction.type !== InteractionType.ApplicationCommand || !interaction.data) {
+      throw new Error("erwartete eine ApplicationCommand-Interaction mit data");
+    }
+    expect(interaction.data).toMatchObject({
+      name: "ticket",
+      options: [
+        {
+          name: "admin",
+          type: ApplicationCommandOptionType.SubcommandGroup,
+          options: [
+            {
+              name: "close",
+              type: ApplicationCommandOptionType.Subcommand,
+              options: [{ name: "grund", type: ApplicationCommandOptionType.String, value: "spam" }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(() => buildSlashCommandInteractionDispatch("a b c d")).toThrow(/höchstens/);
+  });
+
   it("snowflake: eindeutig, mit lesbarem Zeitstempel", () => {
     const at = Date.UTC(2026, 0, 1);
     const ids = new Set([snowflake(at), snowflake(at), snowflake(at)]);

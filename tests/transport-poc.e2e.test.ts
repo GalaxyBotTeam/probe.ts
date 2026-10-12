@@ -89,4 +89,23 @@ describe("slashCommand()", () => {
 
     await probe.teardown();
   });
+
+  it("Subcommands: Bot sieht Gruppe, Subcommand und deren Optionen", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand()) return;
+      const { options } = interaction;
+      await interaction.reply(`${interaction.commandName}|${options.getSubcommandGroup()}|${options.getSubcommand()}|${options.getString("grund")}`);
+    });
+    const probe = createProbe(client);
+    await probe.setup();
+
+    await probe.slashCommand("ticket close").withOptions({ grund: "erledigt" }).invoke();
+    expect(probe.lastReply()?.content).toBe("ticket|null|close|erledigt");
+
+    await probe.slashCommand("ticket admin close").withOptions({ grund: "spam" }).invoke();
+    expect(probe.lastReply()?.content).toBe("ticket|admin|close|spam");
+
+    await probe.teardown();
+  });
 });

@@ -69,7 +69,7 @@ export interface Probe {
   emit<K extends GatewayEventName>(eventName: K, overrides?: GatewayEventOverrides[K]): void;
   /** Alle bisher abgefangenen ausgehenden REST-Calls, in Reihenfolge. */
   capturedRequests(): readonly CapturedRequest[];
-  /** Baut einen Slash-Command-Aufruf (`.withOptions(...).invoke()`). */
+  /** Baut einen Slash-Command-Aufruf (`.withOptions(...).invoke()`). Subcommands wie in Discord: `"ticket close"`, `"ticket admin close"`. */
   slashCommand(name: string): SlashCommandInvocation;
   /**
    * Baut einen Button-Klick (`.click()`) auf der zuletzt vom Bot gesendeten
