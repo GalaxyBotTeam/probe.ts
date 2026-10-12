@@ -16,6 +16,7 @@ export {
   buildSlashCommandInteractionDispatch,
   type SlashCommandInteractionOverrides,
   type SlashCommandOptionValues,
+  type SlashCommandUserOptionValue,
 } from "./fixtures/interaction.js";
 export {
   buildButtonInteractionDispatch,

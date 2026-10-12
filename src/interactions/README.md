@@ -13,6 +13,10 @@ keine Interactions sind, siehe stattdessen `../events/`.
 
 ```ts
 await probe.slashCommand("echo").withOptions({ message: "hallo" }).invoke();
+
+// User-Option: `{ user }` statt eines Strings – landet wie bei Discord auch
+// unter `resolved`, `options.getUser()`/`getMember()` liefern echte Objekte
+await probe.slashCommand("warn").withOptions({ member: { user: { username: "anna" } } }).invoke();
 ```
 
 ## `message-component.ts`
@@ -49,7 +53,10 @@ injiziert einfach den Submit.
 
 Alle vier:
 
-- injizieren vorher unsichtbar eine Guild mit Default-Channel (siehe
+- nehmen über `.withContext({ user, member, guild, channel })` an, wer die
+  Interaction wo auslöst (Default: `DEFAULT_IDS`), z.B.
+  `probe.button("ok").withContext({ user: { id: adminId } }).click()`
+- injizieren vorher unsichtbar die Guild der Interaction samt Channel (siehe
   `buildGuildCreateDispatch`), damit `interaction.channel`/`interaction.guild`
   echt auflösen – dieselbe versteckte discord.js-Regel wie bei
   Gateway-Events (`../events/README.md`), hier nur für Interactions

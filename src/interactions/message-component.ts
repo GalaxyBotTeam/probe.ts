@@ -1,3 +1,4 @@
+import type { InteractionContextOverrides } from "../fixtures/interaction-context.js";
 import {
   buildButtonInteractionDispatch,
   buildSelectMenuInteractionDispatch,
@@ -5,6 +6,8 @@ import {
 
 /** Fluent Builder für einen Button-Klick, von `Probe.button()` zurückgegeben. */
 export interface ButtonInvocation {
+  /** Setzt, wer wo klickt (User, Member, Guild, Channel). Gibt sich selbst zurück, zum Verketten. */
+  withContext(context: InteractionContextOverrides): ButtonInvocation;
   /** Injiziert den Klick und wartet, bis der Bot mindestens einmal geantwortet hat. */
   click(): Promise<void>;
 }
@@ -18,18 +21,28 @@ export function createButtonInvocation(
   inject: (dispatch: ReturnType<typeof buildButtonInteractionDispatch>) => void,
   waitForReply: () => Promise<void>,
 ): ButtonInvocation {
-  return {
+  let context: InteractionContextOverrides = {};
+
+  const invocation: ButtonInvocation = {
+    withContext(newContext) {
+      context = newContext;
+      return invocation;
+    },
     async click() {
-      inject(buildButtonInteractionDispatch(customId));
+      inject(buildButtonInteractionDispatch(customId, context));
       await waitForReply();
     },
   };
+
+  return invocation;
 }
 
 /** Fluent Builder für eine Select-Menu-Auswahl, von `Probe.selectMenu()` zurückgegeben. */
 export interface SelectMenuInvocation {
   /** Setzt die ausgewählten Werte. Gibt sich selbst zurück, zum Verketten. */
   withValues(values: string[]): SelectMenuInvocation;
+  /** Setzt, wer wo auswählt (User, Member, Guild, Channel). Gibt sich selbst zurück, zum Verketten. */
+  withContext(context: InteractionContextOverrides): SelectMenuInvocation;
   /** Injiziert die Auswahl und wartet, bis der Bot mindestens einmal geantwortet hat. */
   select(): Promise<void>;
 }
@@ -45,14 +58,19 @@ export function createSelectMenuInvocation(
   waitForReply: () => Promise<void>,
 ): SelectMenuInvocation {
   let values: string[] = [];
+  let context: InteractionContextOverrides = {};
 
   const invocation: SelectMenuInvocation = {
     withValues(newValues) {
       values = newValues;
       return invocation;
     },
+    withContext(newContext) {
+      context = newContext;
+      return invocation;
+    },
     async select() {
-      inject(buildSelectMenuInteractionDispatch(customId, values));
+      inject(buildSelectMenuInteractionDispatch(customId, values, context));
       await waitForReply();
     },
   };

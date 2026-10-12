@@ -1,6 +1,11 @@
 import { REST } from "@discordjs/rest";
 import type { Client } from "discord.js";
-import type { ApplicationFlags, GatewayDispatchPayload, GatewayReadyDispatchData } from "discord-api-types/v10";
+import type {
+  ApplicationFlags,
+  GatewayDispatchPayload,
+  GatewayInteractionCreateDispatch,
+  GatewayReadyDispatchData,
+} from "discord-api-types/v10";
 import { buildGatewayEventDispatches, type GatewayEventName, type GatewayEventOverrides } from "../events/gateway-event.js";
 import { buildGuildCreateDispatch } from "../fixtures/guild-create.js";
 import { DEFAULT_IDS } from "../fixtures/ids.js";
@@ -115,16 +120,22 @@ export function createProbe(client: Client): Probe {
 
   /**
    * Injiziert eine Interaction (Slash Command, Button, Select Menu, Modal) –
-   * sät davor unsichtbar eine Guild mit Default-Channel (siehe
+   * sät davor unsichtbar die Guild der Interaction samt Channel (siehe
    * `buildGuildCreateDispatch`), damit `interaction.channel` echt auflöst
    * (discord.js cached den Channel sonst nicht, siehe
    * `src/events/README.md` für dieselbe Regel bei Gateway-Events). Nur für
    * die Fluent-Invocations (`slashCommand`/`button`/`selectMenu`/`modal`) –
    * der rohe `injectDispatch()` bleibt bewusst ohne Seeding.
    */
-  function injectInteraction(dispatch: GatewayDispatchPayload): void {
+  function injectInteraction(dispatch: GatewayInteractionCreateDispatch): void {
     const gateway = requireGateway();
-    gateway.injectDispatch(buildGuildCreateDispatch());
+    const { guild_id: guildId, channel } = dispatch.d;
+    gateway.injectDispatch(
+      buildGuildCreateDispatch({
+        ...(guildId ? { id: guildId } : {}),
+        ...(channel ? { channel: { id: channel.id, type: channel.type } } : {}),
+      }),
+    );
     gateway.injectDispatch(dispatch);
   }
 

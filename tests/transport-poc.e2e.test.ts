@@ -1,3 +1,4 @@
+import { Client, GatewayIntentBits } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
 import { createProbe } from "../src/index.js";
 import { createPingBot } from "../examples/ping-bot/bot.js";
@@ -46,6 +47,28 @@ describe("slashCommand()", () => {
 
     expect(probe.lastReply()).toMatchObject({ content: "🐢 Fertig!" });
     expect(probe.capturedRequests()).toHaveLength(2);
+
+    await probe.teardown();
+  });
+
+  it("withContext() + User-Option: Bot sieht Guild, Aufrufer und den aufgelösten Nutzer", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand()) return;
+      const target = interaction.options.getUser("member", true);
+      const targetMember = interaction.options.getMember("member");
+      await interaction.reply(`${interaction.guildId}|${interaction.user.id}|${target.username}|${targetMember ? "member" : "none"}`);
+    });
+    const probe = createProbe(client);
+    await probe.setup();
+
+    await probe
+      .slashCommand("whois")
+      .withContext({ guild: { id: "1200000000000000001" }, user: { id: "1200000000000000002" } })
+      .withOptions({ member: { user: { id: "1200000000000000003", username: "anna" } } })
+      .invoke();
+
+    expect(probe.lastReply()?.content).toBe("1200000000000000001|1200000000000000002|anna|member");
 
     await probe.teardown();
   });

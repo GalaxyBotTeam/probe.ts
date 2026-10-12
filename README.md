@@ -128,9 +128,9 @@ probe.ts works with discord.js v14+. You can integrate it without modifying your
 
 ## Current Status
 
-**Implemented:** Slash Commands, Buttons/Select Menus (string-select)/Modals with collectors, the gateway events listed above, Components V2 container evaluation.
+**Implemented:** Slash Commands (incl. user options), Buttons/Select Menus (string-select)/Modals with collectors, per-interaction user/guild/channel via `withContext()`, the gateway events listed above, Components V2 container evaluation.
 
-**Not yet supported:** custom Vitest matchers, other select-menu types (user/role/mentionable/channel), a message-bound `createMessageComponentCollector()` (channel-wide collectors work today), embed snapshot testing, multi-user simulation, permission/role simulation.
+**Not yet supported:** custom Vitest matchers, other select-menu types (user/role/mentionable/channel), a message-bound `createMessageComponentCollector()` (channel-wide collectors work today), embed snapshot testing, permission/role simulation.
 
 ⚠️ **Pre-release.** probe.ts is freshly built and not yet battle-tested at scale — the public API may still change before a stable `v0.1.0`. Feedback and bug reports are very welcome.
 
