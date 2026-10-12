@@ -44,8 +44,16 @@ const FAKE_READY_DATA = {
  * senden. Siehe `src/transport/README.md` für die Architektur-Begründung.
  */
 export interface Probe {
-  /** Loggt den Client gegen den Fake-Transport ein und wartet auf "Ready". */
+  /** Loggt den Client gegen den Fake-Transport ein und meldet ihn "Ready" – `login()` + `ready()` in einem. */
   setup(): Promise<void>;
+  /**
+   * Nur der Login gegen den Fake-Transport, ohne READY. Für Bots, die ihre
+   * Event-Handler erst nach `client.login()` registrieren: erst den Bot
+   * fertig booten lassen, dann `ready()`.
+   */
+  login(): Promise<void>;
+  /** Meldet den eingeloggten Client "Ready" (feuert `clientReady`). */
+  ready(): void;
   /** Räumt den Client sauber ab (kein echter Socket, aber Timer/Listener). */
   teardown(): Promise<void>;
   /** Injiziert ein rohes Gateway-Dispatch-Event (z.B. `INTERACTION_CREATE`). */
@@ -99,7 +107,7 @@ export function createProbe(client: Client): Probe {
 
   function requireGateway(): GatewayAdapter {
     if (!gateway) {
-      throw new Error("probe.ts: setup() muss vor injectDispatch()/emit() aufgerufen werden");
+      throw new Error("probe.ts: setup() oder login() muss vor injectDispatch()/emit()/ready() aufgerufen werden");
     }
     return gateway;
   }
@@ -139,11 +147,21 @@ export function createProbe(client: Client): Probe {
     gateway.injectDispatch(dispatch);
   }
 
+  async function login(): Promise<void> {
+    await client.login("probe.ts-fake-token");
+  }
+
+  function ready(): void {
+    requireGateway().injectReady(FAKE_READY_DATA);
+  }
+
   return {
     async setup() {
-      await client.login("probe.ts-fake-token");
-      requireGateway().injectReady(FAKE_READY_DATA);
+      await login();
+      ready();
     },
+    login,
+    ready,
     async teardown() {
       await client.destroy();
     },
