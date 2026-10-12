@@ -14,7 +14,7 @@ import { buildChannel, type ChannelFixture } from "./channel.js";
 import { buildMember } from "./member.js";
 import { buildUser } from "./user.js";
 
-/** Fixture-Overrides für Reaction-Events: welches Emoji, wer reagiert, auf welche Nachricht. */
+/** Fixture overrides for reaction events: which emoji, who reacts, on which message. */
 export interface ReactionOverrides {
   emoji?: string;
   user?: Partial<APIUser>;
@@ -23,16 +23,16 @@ export interface ReactionOverrides {
   guildId?: string;
 }
 
-/** Baut ein unicode-`APIEmoji` (kein custom Server-Emoji – dafür bräuchte es eine echte Emoji-`id`). */
+/** Builds a unicode `APIEmoji` (no custom server emoji – that would need a real emoji `id`). */
 function buildEmoji(name: string): APIEmoji {
   return { id: null, name };
 }
 
 /**
- * Baut ein rohes `MESSAGE_REACTION_ADD`-Gateway-Dispatch-Event. Setzt
- * voraus, dass die Nachricht bereits im Channel-Cache bekannt ist (siehe
+ * Builds a raw `MESSAGE_REACTION_ADD` gateway dispatch event. Requires the
+ * message to be known in the channel cache already (see
  * `buildMessageCreateDispatch`) – `probe.emit("messageReactionAdd", ...)`
- * übernimmt das automatisch.
+ * takes care of that automatically.
  */
 export function buildMessageReactionAddDispatch(overrides: ReactionOverrides = {}): GatewayMessageReactionAddDispatch {
   const channel = buildChannel(overrides.channel);
@@ -58,11 +58,11 @@ export function buildMessageReactionAddDispatch(overrides: ReactionOverrides = {
 }
 
 /**
- * Baut ein rohes `MESSAGE_REACTION_REMOVE`-Gateway-Dispatch-Event.
- * discord.js löst den Nutzer nur auf, wenn er schon global gecached ist
- * (anders als bei `MESSAGE_REACTION_ADD`, das dafür extra den `member`-Block
- * hat) – `probe.emit("messageReactionRemove", ...)` stellt das über ein
- * vorangestelltes `MESSAGE_REACTION_ADD` mit demselben Nutzer/Emoji sicher.
+ * Builds a raw `MESSAGE_REACTION_REMOVE` gateway dispatch event. discord.js
+ * only resolves the user if they are already cached globally (unlike
+ * `MESSAGE_REACTION_ADD`, which has the extra `member` block for that) –
+ * `probe.emit("messageReactionRemove", ...)` ensures this with a preceding
+ * `MESSAGE_REACTION_ADD` with the same user/emoji.
  */
 export function buildMessageReactionRemoveDispatch(
   overrides: ReactionOverrides = {},

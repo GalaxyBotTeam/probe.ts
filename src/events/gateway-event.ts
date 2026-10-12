@@ -21,7 +21,7 @@ import {
 } from "../fixtures/reaction-events.js";
 import { buildUser } from "../fixtures/user.js";
 
-/** Overrides-Typen je von `Probe.emit()` unterstütztem Event-Namen. */
+/** Override types per event name supported by `Probe.emit()`. */
 export interface GatewayEventOverrides {
   guildMemberAdd: GuildMemberAddOverrides;
   guildMemberRemove: GuildMemberRemoveOverrides;
@@ -31,7 +31,7 @@ export interface GatewayEventOverrides {
   messageReactionRemove: ReactionOverrides;
 }
 
-/** Baut die `MessageCreateOverrides`, mit denen die Nachricht hinter einer Reaction geseedet wird – dieselbe `id`/`channel`/`guildId`, die die Reaction referenziert. */
+/** Builds the `MessageCreateOverrides` that seed the message behind a reaction – the same `id`/`channel`/`guildId` the reaction references. */
 function messageSeedFor(overrides: ReactionOverrides): MessageCreateOverrides {
   return {
     ...(overrides.messageId ? { id: overrides.messageId } : {}),
@@ -40,20 +40,20 @@ function messageSeedFor(overrides: ReactionOverrides): MessageCreateOverrides {
   };
 }
 
-/** Von `Probe.emit()` unterstützte discord.js-Event-Namen (camelCase, wie `client.on(...)`). */
+/** discord.js event names supported by `Probe.emit()` (camelCase, like `client.on(...)`). */
 export type GatewayEventName = keyof GatewayEventOverrides;
 
 /**
- * Baut die Sequenz roher Gateway-Dispatch-Events für ein `Probe.emit()`.
- * Member-/Message-/Reaction-Events brauchen eine im Client-Cache bekannte
- * Guild (sonst ignoriert discord.js sie stillschweigend, siehe
- * `src/fixtures/guild-create.ts`) – die wird hier vorangestellt, unsichtbar
- * für den Aufrufer: `guildMemberRemove` bekommt sein Mitglied vorab über die
- * `GUILD_CREATE`-Members-Liste bekannt, `messageDelete`/`messageReactionAdd`/
- * `messageReactionRemove` ihre Nachricht über ein vorangestelltes
- * `MESSAGE_CREATE`, `messageReactionRemove` zusätzlich den reagierenden
- * Nutzer über ein vorangestelltes `MESSAGE_REACTION_ADD` – exakt die
- * Reihenfolge, in der es auch auf echtem Discord passiert wäre.
+ * Builds the sequence of raw gateway dispatch events for a `Probe.emit()`.
+ * Member/message/reaction events need a guild known in the client cache
+ * (otherwise discord.js silently ignores them, see
+ * `src/fixtures/guild-create.ts`) – it is prepended here, invisible to the
+ * caller: `guildMemberRemove` gets its member known beforehand via the
+ * `GUILD_CREATE` members list, `messageDelete`/`messageReactionAdd`/
+ * `messageReactionRemove` their message via a preceding `MESSAGE_CREATE`,
+ * `messageReactionRemove` additionally the reacting user via a preceding
+ * `MESSAGE_REACTION_ADD` – exactly the order it would happen in on real
+ * Discord.
  */
 export function buildGatewayEventDispatches<K extends GatewayEventName>(
   eventName: K,
@@ -61,10 +61,10 @@ export function buildGatewayEventDispatches<K extends GatewayEventName>(
 ): GatewayDispatchPayload[] {
   switch (eventName) {
     case "guildMemberAdd": {
-      // Der Switch auf `eventName` narrowt `K` nicht automatisch auf den
-      // passenden Overrides-Typ – der Cast ist hier sicher, weil jeder
-      // Overrides-Typ ausschließlich optionale Felder hat (ein
-      // `{}`-Default passt also immer).
+      // The switch on `eventName` doesn't narrow `K` to the matching
+      // overrides type automatically – the cast is safe here because every
+      // overrides type has only optional fields (so a `{}` default always
+      // fits).
       const o = (overrides ?? {}) as GuildMemberAddOverrides;
       const guildId = o.guildId ?? DEFAULT_IDS.guild;
       return [buildGuildCreateDispatch({ id: guildId }), buildGuildMemberAddDispatch(o)];
@@ -105,6 +105,6 @@ export function buildGatewayEventDispatches<K extends GatewayEventName>(
       ];
     }
     default:
-      throw new Error(`probe.ts: unbekannter Event-Name "${eventName as string}"`);
+      throw new Error(`probe.ts: unknown event name "${eventName as string}"`);
   }
 }

@@ -11,12 +11,11 @@ import {
 } from "discord.js";
 
 /**
- * Beispiel-Bot für Message Components: `/feedback` zeigt einen Button, der
- * über `awaitMessageComponent()` (Channel-Collector) eingesammelt wird und
- * ein Modal öffnet; das Modal wird über `awaitModalSubmit()`
- * (Interaction-Collector) eingesammelt. `/color` zeigt ein
- * String-Select-Menu. Referenz-Beispiel für Buttons/Select-Menus/Modals/
- * Collectors in probe.ts.
+ * Example bot for message components: `/feedback` shows a button that is
+ * collected via `awaitMessageComponent()` (channel collector) and opens a
+ * modal; the modal is collected via `awaitModalSubmit()` (interaction
+ * collector). `/color` shows a string select menu. Reference example for
+ * buttons/select menus/modals/collectors in probe.ts.
  */
 export function createFeedbackBot(): Client {
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -25,10 +24,10 @@ export function createFeedbackBot(): Client {
     if (interaction.isChatInputCommand() && interaction.commandName === "feedback") {
       const button = new ButtonBuilder()
         .setCustomId("open-feedback-modal")
-        .setLabel("📝 Formular öffnen")
+        .setLabel("📝 Open form")
         .setStyle(ButtonStyle.Primary);
       await interaction.reply({
-        content: "Klick, um Feedback zu geben:",
+        content: "Click to give feedback:",
         components: [new ActionRowBuilder<ButtonBuilder>().addComponents(button)],
       });
 
@@ -40,12 +39,12 @@ export function createFeedbackBot(): Client {
 
       const modal = new ModalBuilder()
         .setCustomId("feedback-modal")
-        .setTitle("Dein Feedback")
+        .setTitle("Your feedback")
         .addComponents(
           new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
               .setCustomId("feedback-text")
-              .setLabel("Was können wir besser machen?")
+              .setLabel("What can we do better?")
               .setStyle(TextInputStyle.Paragraph),
           ),
         );
@@ -55,24 +54,24 @@ export function createFeedbackBot(): Client {
         filter: (i) => i.customId === "feedback-modal",
         time: 15_000,
       });
-      await submitted.reply(`Danke für dein Feedback: "${submitted.fields.getTextInputValue("feedback-text")}"`);
+      await submitted.reply(`Thanks for your feedback: "${submitted.fields.getTextInputValue("feedback-text")}"`);
       return;
     }
 
     if (interaction.isChatInputCommand() && interaction.commandName === "color") {
       const select = new StringSelectMenuBuilder()
         .setCustomId("color-select")
-        .setPlaceholder("Wähl eine Farbe")
-        .addOptions({ label: "Rot", value: "rot" }, { label: "Grün", value: "gruen" }, { label: "Blau", value: "blau" });
+        .setPlaceholder("Pick a color")
+        .addOptions({ label: "Red", value: "red" }, { label: "Green", value: "green" }, { label: "Blue", value: "blue" });
       await interaction.reply({
-        content: "Wähl deine Lieblingsfarbe:",
+        content: "Pick your favorite color:",
         components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
       });
       return;
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === "color-select") {
-      await interaction.reply(`Du hast ${interaction.values[0]} gewählt.`);
+      await interaction.reply(`You picked ${interaction.values[0]}.`);
     }
   });
 

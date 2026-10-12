@@ -4,22 +4,22 @@ import {
   buildSelectMenuInteractionDispatch,
 } from "../fixtures/message-component-interaction.js";
 
-/** `messageId`-Override nur, wenn der Bot schon eine Nachricht gesendet hat – sonst bleibt der Fixture-Default. */
+/** `messageId` override only once the bot has sent a message – otherwise the fixture default stays. */
 function withMessageId(messageId: string | undefined): { messageId?: string } {
   return messageId ? { messageId } : {};
 }
 
-/** Fluent Builder für einen Button-Klick, von `Probe.button()` zurückgegeben. */
+/** Fluent builder for a button click, returned by `Probe.button()`. */
 export interface ButtonInvocation {
-  /** Setzt, wer wo klickt (User, Member, Guild, Channel). Gibt sich selbst zurück, zum Verketten. */
+  /** Sets who clicks where (user, member, guild, channel). Returns itself, for chaining. */
   withContext(context: InteractionContextOverrides): ButtonInvocation;
-  /** Injiziert den Klick und wartet, bis der Bot mindestens einmal geantwortet hat. */
+  /** Injects the click and waits until the bot has responded at least once. */
   click(): Promise<void>;
 }
 
 /**
- * Baut eine `ButtonInvocation`. Nicht Teil der öffentlichen API – nur
- * intern via `Probe.button()` verwendet.
+ * Builds a `ButtonInvocation`. Not part of the public API – only used
+ * internally via `Probe.button()`.
  */
 export function createButtonInvocation(
   customId: string,
@@ -43,20 +43,20 @@ export function createButtonInvocation(
   return invocation;
 }
 
-/** Fluent Builder für eine Select-Menu-Auswahl, von `Probe.selectMenu()` zurückgegeben. */
+/** Fluent builder for a select menu choice, returned by `Probe.selectMenu()`. */
 export interface SelectMenuInvocation {
-  /** Setzt die ausgewählten Werte. Gibt sich selbst zurück, zum Verketten. */
+  /** Sets the selected values. Returns itself, for chaining. */
   withValues(values: string[]): SelectMenuInvocation;
-  /** Setzt, wer wo auswählt (User, Member, Guild, Channel). Gibt sich selbst zurück, zum Verketten. */
+  /** Sets who chooses where (user, member, guild, channel). Returns itself, for chaining. */
   withContext(context: InteractionContextOverrides): SelectMenuInvocation;
-  /** Injiziert die Auswahl und wartet, bis der Bot mindestens einmal geantwortet hat. */
+  /** Injects the choice and waits until the bot has responded at least once. */
   select(): Promise<void>;
 }
 
 /**
- * Baut eine `SelectMenuInvocation`. Nicht Teil der öffentlichen API – nur
- * intern via `Probe.selectMenu()` verwendet. Deckt aktuell nur
- * String-Select ab (siehe `fixtures/message-component-interaction.ts`).
+ * Builds a `SelectMenuInvocation`. Not part of the public API – only used
+ * internally via `Probe.selectMenu()`. Currently covers string selects only
+ * (see `fixtures/message-component-interaction.ts`).
  */
 export function createSelectMenuInvocation(
   customId: string,

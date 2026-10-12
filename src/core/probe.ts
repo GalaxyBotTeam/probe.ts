@@ -16,18 +16,18 @@ import { createSlashCommandInvocation, type SlashCommandInvocation } from "../in
 import { GatewayAdapter } from "../transport/gateway-adapter.js";
 import { type CapturedRequest, RestAdapter, type RestResponder } from "../transport/rest-adapter.js";
 
-/** Wartet, bis `condition()` wahr wird, oder wirft nach `timeoutMs` (Standard: 1000ms). */
+/** Waits until `condition()` becomes true, or throws after `timeoutMs` (default: 1000ms). */
 async function waitUntil(condition: () => boolean, timeoutMs = 1000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (!condition()) {
     if (Date.now() >= deadline) {
-      throw new Error(`probe.ts: Timeout (${timeoutMs}ms) beim Warten auf eine Antwort des Bots`);
+      throw new Error(`probe.ts: timeout (${timeoutMs}ms) while waiting for a response from the bot`);
     }
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
 
-/** Minimaler READY-Payload – reicht discord.js, um sofort "AllReady" zu melden. */
+/** Minimal READY payload – enough for discord.js to report "AllReady" right away. */
 const FAKE_READY_DATA = {
   v: 10,
   user: { id: DEFAULT_IDS.bot, username: "probe", discriminator: "0000", global_name: null, avatar: null, bot: true },
@@ -39,70 +39,69 @@ const FAKE_READY_DATA = {
 } satisfies GatewayReadyDispatchData;
 
 /**
- * Steuert einen discord.js-`Client` über den Fake-Transport-Layer: injiziert
- * Gateway-Events, statt zu verbinden, und fängt REST-Calls ab, statt sie zu
- * senden. Siehe `src/transport/README.md` für die Architektur-Begründung.
+ * Drives a discord.js `Client` through the fake transport layer: injects
+ * gateway events instead of connecting, and captures REST calls instead of
+ * sending them. See `src/transport/README.md` for the architecture rationale.
  */
 export interface Probe {
-  /** Loggt den Client gegen den Fake-Transport ein und meldet ihn "Ready" – `login()` + `ready()` in einem. */
+  /** Logs the client in against the fake transport and reports it "Ready" – `login()` + `ready()` in one. */
   setup(): Promise<void>;
   /**
-   * Nur der Login gegen den Fake-Transport, ohne READY. Für Bots, die ihre
-   * Event-Handler erst nach `client.login()` registrieren: erst den Bot
-   * fertig booten lassen, dann `ready()`.
+   * Only the login against the fake transport, without READY. For bots that
+   * register their event handlers only after `client.login()`: let the bot
+   * finish booting first, then call `ready()`.
    */
   login(): Promise<void>;
-  /** Meldet den eingeloggten Client "Ready" (feuert `clientReady`). */
+  /** Reports the logged-in client "Ready" (fires `clientReady`). */
   ready(): void;
-  /** Räumt den Client sauber ab (kein echter Socket, aber Timer/Listener). */
+  /** Tears the client down cleanly (no real socket, but timers/listeners). */
   teardown(): Promise<void>;
-  /** Injiziert ein rohes Gateway-Dispatch-Event (z.B. `INTERACTION_CREATE`). */
+  /** Injects a raw gateway dispatch event (e.g. `INTERACTION_CREATE`). */
   injectDispatch(payload: GatewayDispatchPayload): void;
   /**
-   * Injiziert ein generisches Gateway-Event (z.B. `guildMemberAdd`,
-   * `messageCreate`) über passende Fixture-Builder – baut bei Bedarf
-   * automatisch eine Guild/einen Channel im Client-Cache vor (siehe
-   * `src/events/gateway-event.ts`). Synchron wie `injectDispatch()`: auf
-   * asynchrone Bot-Reaktionen (z.B. eine gesendete Willkommensnachricht) mit
-   * `vi.waitFor(...)` warten.
+   * Injects a generic gateway event (e.g. `guildMemberAdd`, `messageCreate`)
+   * through the matching fixture builders – seeds a guild/channel into the
+   * client cache first when needed (see `src/events/gateway-event.ts`).
+   * Synchronous like `injectDispatch()`: wait for asynchronous bot reactions
+   * (e.g. a sent welcome message) with `vi.waitFor(...)`.
    */
   emit<K extends GatewayEventName>(eventName: K, overrides?: GatewayEventOverrides[K]): void;
-  /** Alle bisher abgefangenen ausgehenden REST-Calls, in Reihenfolge. */
+  /** All outgoing REST calls captured so far, in order. */
   capturedRequests(): readonly CapturedRequest[];
-  /** Baut einen Slash-Command-Aufruf (`.withOptions(...).invoke()`). Subcommands wie in Discord: `"ticket close"`, `"ticket admin close"`. */
+  /** Builds a slash command invocation (`.withOptions(...).invoke()`). Subcommands as in Discord: `"ticket close"`, `"ticket admin close"`. */
   slashCommand(name: string): SlashCommandInvocation;
   /**
-   * Baut einen Button-Klick (`.click()`) auf der zuletzt vom Bot gesendeten
-   * Nachricht (vor der ersten: `DEFAULT_IDS.message`) – so greifen auch an
-   * die Nachricht gebundene Collectors.
+   * Builds a button click (`.click()`) on the message the bot sent last
+   * (before the first one: `DEFAULT_IDS.message`) – so collectors bound to
+   * that message fire too.
    */
   button(customId: string): ButtonInvocation;
-  /** Baut eine Select-Menu-Auswahl (`.withValues([...]).select()`), wie `button()` auf der zuletzt gesendeten Nachricht. Deckt aktuell nur String-Select ab. */
+  /** Builds a select menu choice (`.withValues([...]).select()`), like `button()` on the message sent last. Currently covers string selects only. */
   selectMenu(customId: string): SelectMenuInvocation;
   /**
-   * Hinterlegt, was Discord auf `method` + Pfad (Regex gegen den URL-Pfad)
-   * antwortet – für Routen, auf die der Bot einen Body erwartet, z.B.
-   * `probe.respond("GET", /\/guilds\/\d+\/invites$/, () => [])`. Hat Vorrang
-   * vor den eingebauten Nachrichten-Routen; ohne passende Route kommt eine
-   * leere 204-Antwort.
+   * Registers what Discord answers for `method` + path (regex against the URL
+   * path) – for routes where the bot expects a body, e.g.
+   * `probe.respond("GET", /\/guilds\/\d+\/invites$/, () => [])`. Takes
+   * precedence over the built-in message routes; without a matching route
+   * the response is an empty 204.
    */
   respond(method: string, path: RegExp, responder: RestResponder): void;
-  /** Baut einen Modal-Submit (`.withFields({...}).submit()`). */
+  /** Builds a modal submit (`.withFields({...}).submit()`). */
   modal(customId: string): ModalSubmitInvocation;
-  /** Der Inhalt der zuletzt gesendeten Antwort (`reply`/`editReply`), oder `undefined` falls noch keine kam. */
+  /** The content of the reply sent last (`reply`/`editReply`), or `undefined` if none came yet. */
   lastReply(): ReplyContent | undefined;
-  /** Die Inhalte aller bisher gesendeten Antworten, in Reihenfolge. */
+  /** The contents of all replies sent so far, in order. */
   allReplies(): ReplyContent[];
-  /** Das zuletzt per `interaction.showModal(...)` gezeigte Modal, oder `undefined` falls noch keins kam. */
+  /** The modal shown last via `interaction.showModal(...)`, or `undefined` if none came yet. */
   lastModal(): ModalContent | undefined;
-  /** Alle bisher gezeigten Modals, in Reihenfolge. */
+  /** All modals shown so far, in order. */
   allModals(): ModalContent[];
 }
 
 /**
- * Baut eine Probe um einen discord.js-`Client`. Ersetzt `client.rest` und
- * `client.options.ws.buildStrategy`, bevor `setup()` `login()` aufruft – der
- * Bot-Code selbst bleibt unverändert und bekommt echte discord.js-Objekte.
+ * Builds a probe around a discord.js `Client`. Replaces `client.rest` and
+ * `client.options.ws.buildStrategy` before `setup()` calls `login()` – the
+ * bot code itself stays unchanged and gets real discord.js objects.
  */
 export function createProbe(client: Client): Probe {
   const rest = new RestAdapter();
@@ -119,7 +118,7 @@ export function createProbe(client: Client): Probe {
 
   function requireGateway(): GatewayAdapter {
     if (!gateway) {
-      throw new Error("probe.ts: setup() oder login() muss vor injectDispatch()/emit()/ready() aufgerufen werden");
+      throw new Error("probe.ts: setup() or login() must be called before injectDispatch()/emit()/ready()");
     }
     return gateway;
   }
@@ -132,20 +131,20 @@ export function createProbe(client: Client): Probe {
     return rest.requests.map(parseModal).filter((modal): modal is ModalContent => modal !== undefined);
   }
 
-  /** Wartet auf mindestens einen neuen REST-Call – gemeinsame Basis für jede Fluent-Invocation (Slash Command, Button, Select Menu, Modal). */
+  /** Waits for at least one new REST call – shared base of every fluent invocation (slash command, button, select menu, modal). */
   async function waitForNextRequest(): Promise<void> {
     const baseline = rest.requests.length;
     await waitUntil(() => rest.requests.length > baseline);
   }
 
   /**
-   * Injiziert eine Interaction (Slash Command, Button, Select Menu, Modal) –
-   * sät davor unsichtbar die Guild der Interaction samt Channel (siehe
-   * `buildGuildCreateDispatch`), damit `interaction.channel` echt auflöst
-   * (discord.js cached den Channel sonst nicht, siehe
-   * `src/events/README.md` für dieselbe Regel bei Gateway-Events). Nur für
-   * die Fluent-Invocations (`slashCommand`/`button`/`selectMenu`/`modal`) –
-   * der rohe `injectDispatch()` bleibt bewusst ohne Seeding.
+   * Injects an interaction (slash command, button, select menu, modal) –
+   * invisibly seeds the interaction's guild and channel first (see
+   * `buildGuildCreateDispatch`) so `interaction.channel` resolves for real
+   * (discord.js doesn't cache the channel otherwise, see
+   * `src/events/README.md` for the same rule for gateway events). Only for
+   * the fluent invocations (`slashCommand`/`button`/`selectMenu`/`modal`) –
+   * the raw `injectDispatch()` deliberately stays without seeding.
    */
   function injectInteraction(dispatch: GatewayInteractionCreateDispatch): void {
     const gateway = requireGateway();

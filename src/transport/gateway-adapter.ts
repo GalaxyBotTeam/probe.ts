@@ -15,26 +15,26 @@ import {
 } from "discord-api-types/v10";
 
 /**
- * Fake `IShardingStrategy` – ersetzt `@discordjs/ws`'s echten Sharding-Layer.
+ * Fake `IShardingStrategy` – replaces `@discordjs/ws`'s real sharding layer.
  *
- * Statt Sockets zu öffnen, hält der Adapter nur eine Referenz auf den
- * `WebSocketManager`, den discord.js selbst konstruiert (übergeben via
- * `client.options.ws.buildStrategy`), und emittiert Gateway-Events direkt
- * auf diesem Manager – exakt das, was `SimpleShardingStrategy` intern auch
- * tut (siehe Spike-Report). discord.js verarbeitet die Events dann über
- * seinen echten `handlePacket`/Actions-Pfad und baut echte Model-Objekte.
+ * Instead of opening sockets, the adapter only holds a reference to the
+ * `WebSocketManager` that discord.js constructs itself (passed via
+ * `client.options.ws.buildStrategy`), and emits gateway events directly on
+ * that manager – exactly what `SimpleShardingStrategy` does internally too
+ * (see spike report). discord.js then processes the events through its real
+ * `handlePacket`/actions path and builds real model objects.
  *
- * Nicht Teil der öffentlichen probe.ts-API – nur intern via `createProbe`
- * verwendet.
+ * Not part of the public probe.ts API – only used internally via
+ * `createProbe`.
  */
 export class GatewayAdapter implements IShardingStrategy {
-  /** Ausgehende Gateway-Payloads (Heartbeat, Identify, ...), die der Bot "senden" wollte. */
+  /** Outgoing gateway payloads (heartbeat, identify, ...) the bot wanted to "send". */
   readonly sentPayloads: { shardId: number; payload: GatewaySendPayload }[] = [];
 
   constructor(private readonly manager: WebSocketManager) {}
 
   connect(): void {
-    // no-op: kein echter Socket zu öffnen
+    // no-op: no real socket to open
   }
 
   destroy(_options?: Omit<WebSocketShardDestroyOptions, "recover">): void {
@@ -42,7 +42,7 @@ export class GatewayAdapter implements IShardingStrategy {
   }
 
   spawn(_shardIds: number[]): void {
-    // no-op: Shards existieren nur virtuell
+    // no-op: shards only exist virtually
   }
 
   send(shardId: number, payload: GatewaySendPayload): void {
@@ -54,19 +54,19 @@ export class GatewayAdapter implements IShardingStrategy {
   }
 
   /**
-   * Fährt Shard 0 in den `Ready`-Zustand hoch. Zwei Events nötig (siehe
-   * Spike-Report): `Ready` (setzt `expectedGuilds`) + `Dispatch{t:'READY'}`
-   * (füllt `client.user`/`client.guilds`, triggert `checkReady()`).
+   * Brings shard 0 up into the `Ready` state. Needs two events (see spike
+   * report): `Ready` (sets `expectedGuilds`) + `Dispatch{t:'READY'}` (fills
+   * `client.user`/`client.guilds`, triggers `checkReady()`).
    *
-   * `guilds: []` im READY-Payload sorgt dafür, dass discord.js sofort
-   * "AllReady" meldet, ohne auf `GUILD_CREATE`-Fixtures zu warten.
+   * `guilds: []` in the READY payload makes discord.js report "AllReady"
+   * right away, without waiting for `GUILD_CREATE` fixtures.
    */
   injectReady(data: GatewayReadyDispatchData): void {
     this.manager.emit(WebSocketShardEvents.Ready, { data, shardId: 0 });
     this.injectDispatch({ t: GatewayDispatchEvents.Ready, op: GatewayOpcodes.Dispatch, s: 1, d: data });
   }
 
-  /** Injiziert ein rohes Gateway-Dispatch-Event (z.B. `INTERACTION_CREATE`). */
+  /** Injects a raw gateway dispatch event (e.g. `INTERACTION_CREATE`). */
   injectDispatch(payload: GatewayDispatchPayload): void {
     this.manager.emit(WebSocketShardEvents.Dispatch, { data: payload, shardId: 0 });
   }

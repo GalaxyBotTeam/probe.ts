@@ -1,19 +1,19 @@
 import type { InteractionContextOverrides } from "../fixtures/interaction-context.js";
 import { buildModalSubmitInteractionDispatch } from "../fixtures/modal-interaction.js";
 
-/** Fluent Builder für einen Modal-Submit, von `Probe.modal()` zurückgegeben. */
+/** Fluent builder for a modal submit, returned by `Probe.modal()`. */
 export interface ModalSubmitInvocation {
-  /** Setzt die eingegebenen Felder (`custom_id` → Text). Gibt sich selbst zurück, zum Verketten. */
+  /** Sets the entered fields (`custom_id` → text). Returns itself, for chaining. */
   withFields(fields: Record<string, string>): ModalSubmitInvocation;
-  /** Setzt, wer wo absendet (User, Member, Guild, Channel). Gibt sich selbst zurück, zum Verketten. */
+  /** Sets who submits where (user, member, guild, channel). Returns itself, for chaining. */
   withContext(context: InteractionContextOverrides): ModalSubmitInvocation;
-  /** Injiziert den Submit und wartet, bis der Bot mindestens einmal geantwortet hat. */
+  /** Injects the submit and waits until the bot has responded at least once. */
   submit(): Promise<void>;
 }
 
 /**
- * Baut eine `ModalSubmitInvocation`. Nicht Teil der öffentlichen API – nur
- * intern via `Probe.modal()` verwendet.
+ * Builds a `ModalSubmitInvocation`. Not part of the public API – only used
+ * internally via `Probe.modal()`.
  */
 export function createModalSubmitInvocation(
   customId: string,

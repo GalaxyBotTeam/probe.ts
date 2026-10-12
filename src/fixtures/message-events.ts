@@ -11,7 +11,7 @@ import { DEFAULT_IDS } from "./ids.js";
 import { buildChannel, type ChannelFixture } from "./channel.js";
 import { buildMessage } from "./message.js";
 
-/** Fixture-Overrides für `buildMessageCreateDispatch`. */
+/** Fixture overrides for `buildMessageCreateDispatch`. */
 export interface MessageCreateOverrides {
   id?: string;
   content?: string;
@@ -20,7 +20,7 @@ export interface MessageCreateOverrides {
   guildId?: string;
 }
 
-/** Fixture-Overrides für `buildMessageDeleteDispatch` – kein `content`/`author`, eine gelöschte Nachricht braucht nur ihre Identität. */
+/** Fixture overrides for `buildMessageDeleteDispatch` – no `content`/`author`, a deleted message only needs its identity. */
 export interface MessageDeleteOverrides {
   id?: string;
   channel?: Partial<ChannelFixture>;
@@ -28,10 +28,9 @@ export interface MessageDeleteOverrides {
 }
 
 /**
- * Baut ein rohes `MESSAGE_CREATE`-Gateway-Dispatch-Event. Setzt voraus, dass
- * der Channel bereits im Client-Cache bekannt ist (siehe
- * `buildGuildCreateDispatch`) – `probe.emit("messageCreate", ...)`
- * übernimmt das automatisch.
+ * Builds a raw `MESSAGE_CREATE` gateway dispatch event. Requires the channel
+ * to be known in the client cache already (see `buildGuildCreateDispatch`) –
+ * `probe.emit("messageCreate", ...)` takes care of that automatically.
  */
 export function buildMessageCreateDispatch(overrides: MessageCreateOverrides = {}): GatewayMessageCreateDispatch {
   const base = buildMessage(overrides);
@@ -46,12 +45,11 @@ export function buildMessageCreateDispatch(overrides: MessageCreateOverrides = {
 }
 
 /**
- * Baut ein rohes `MESSAGE_DELETE`-Gateway-Dispatch-Event. discord.js
- * emittiert nur eine echte `Message`, wenn die Nachricht schon im
- * Channel-Messages-Cache bekannt war – `probe.emit("messageDelete", ...)`
- * stellt das über ein vorangestelltes `MESSAGE_CREATE` sicher (mit gleicher
- * `id`), exakt die Reihenfolge, in der es auch auf echtem Discord passiert
- * wäre.
+ * Builds a raw `MESSAGE_DELETE` gateway dispatch event. discord.js only
+ * emits a real `Message` if the message was already known in the channel
+ * messages cache – `probe.emit("messageDelete", ...)` ensures that with a
+ * preceding `MESSAGE_CREATE` (same `id`), exactly the order it would happen
+ * in on real Discord.
  */
 export function buildMessageDeleteDispatch(overrides: MessageDeleteOverrides = {}): GatewayMessageDeleteDispatch {
   const channel = buildChannel(overrides.channel);

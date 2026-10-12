@@ -1,20 +1,20 @@
 import type { InteractionContextOverrides } from "../fixtures/interaction-context.js";
 import { buildSlashCommandInteractionDispatch, type SlashCommandOptionValues } from "../fixtures/interaction.js";
 
-/** Fluent Builder für einen einzelnen Slash-Command-Aufruf, von `Probe.slashCommand()` zurückgegeben. */
+/** Fluent builder for a single slash command invocation, returned by `Probe.slashCommand()`. */
 export interface SlashCommandInvocation {
-  /** Setzt die Command-Optionen (z.B. `{ menge: 5 }`). Gibt sich selbst zurück, zum Verketten. */
+  /** Sets the command options (e.g. `{ amount: 5 }`). Returns itself, for chaining. */
   withOptions(options: SlashCommandOptionValues): SlashCommandInvocation;
-  /** Setzt, wer den Command wo ausführt (User, Member, Guild, Channel). Gibt sich selbst zurück, zum Verketten. */
+  /** Sets who runs the command where (user, member, guild, channel). Returns itself, for chaining. */
   withContext(context: InteractionContextOverrides): SlashCommandInvocation;
-  /** Injiziert die Interaction und wartet, bis der Bot mindestens einmal geantwortet hat. */
+  /** Injects the interaction and waits until the bot has responded at least once. */
   invoke(): Promise<void>;
 }
 
 /**
- * Baut eine `SlashCommandInvocation`. Nicht Teil der öffentlichen API – nur
- * intern via `Probe.slashCommand()` verwendet, das `inject`/`waitForReply`
- * aus dem Probe-internen Zustand schließt.
+ * Builds a `SlashCommandInvocation`. Not part of the public API – only used
+ * internally via `Probe.slashCommand()`, which closes over
+ * `inject`/`waitForReply` from the probe's internal state.
  */
 export function createSlashCommandInvocation(
   name: string,

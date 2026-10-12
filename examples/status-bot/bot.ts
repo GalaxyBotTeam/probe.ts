@@ -1,11 +1,11 @@
 import { Client, ContainerBuilder, GatewayIntentBits, MessageFlags, SeparatorBuilder, TextDisplayBuilder } from "discord.js";
 
 /**
- * Minimaler Beispiel-Bot: `/status` antwortet mit einem Components-V2-
- * Container (`ContainerBuilder`/`TextDisplayBuilder`/`SeparatorBuilder`)
- * statt einfachem `content` – dient als Referenz-Beispiel für
- * `extractText()` aus `src/interactions/replies.ts`, das solche
- * Container-Antworten für Assertions sinnvoll auswertbar macht.
+ * Minimal example bot: `/status` replies with a Components V2 container
+ * (`ContainerBuilder`/`TextDisplayBuilder`/`SeparatorBuilder`) instead of
+ * plain `content` – serves as the reference example for `extractText()` from
+ * `src/interactions/replies.ts`, which makes such container replies usable in
+ * assertions.
  */
 export function createStatusBot(): Client {
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -14,9 +14,9 @@ export function createStatusBot(): Client {
     if (!interaction.isChatInputCommand() || interaction.commandName !== "status") return;
 
     const container = new ContainerBuilder()
-      .addTextDisplayComponents(new TextDisplayBuilder().setContent("🟢 Alle Systeme laufen"))
+      .addTextDisplayComponents(new TextDisplayBuilder().setContent("🟢 All systems operational"))
       .addSeparatorComponents(new SeparatorBuilder())
-      .addTextDisplayComponents(new TextDisplayBuilder().setContent("Uptime: 3 Tage"));
+      .addTextDisplayComponents(new TextDisplayBuilder().setContent("Uptime: 3 days"));
 
     await interaction.reply({
       components: [container],

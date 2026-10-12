@@ -1,100 +1,101 @@
 # `src/interactions/`
 
-Helfer speziell für Discord-**Interactions**: Slash Commands, Buttons,
-Select Menus, Modal-Submits.
+Helpers specifically for Discord **interactions**: slash commands, buttons,
+select menus, modal submits.
 
-Für generische Gateway-Events (Member-Join, Message-Create, ...), die
-keine Interactions sind, siehe stattdessen `../events/`.
+For generic gateway events (member join, message create, ...) that aren't
+interactions, see `../events/` instead.
 
 ## `slash-command.ts`
 
-`createSlashCommandInvocation` baut die fluent API hinter
+`createSlashCommandInvocation` builds the fluent API behind
 `probe.slashCommand(name)`:
 
 ```ts
-await probe.slashCommand("echo").withOptions({ message: "hallo" }).invoke();
+await probe.slashCommand("echo").withOptions({ message: "hello" }).invoke();
 
-// User-Option: `{ user }` statt eines Strings – landet wie bei Discord auch
-// unter `resolved`, `options.getUser()`/`getMember()` liefern echte Objekte
+// user option: `{ user }` instead of a string – like on Discord it also lands
+// under `resolved`, `options.getUser()`/`getMember()` return real objects
 await probe.slashCommand("warn").withOptions({ member: { user: { username: "anna" } } }).invoke();
 
-// Subcommand (und Gruppe) wie in Discord durch Leerzeichen getrennt – die
-// Optionen landen im Subcommand, `options.getSubcommand()` funktioniert
-await probe.slashCommand("ticket close").withOptions({ grund: "erledigt" }).invoke();
+// subcommand (and group) separated by spaces like in Discord – the options
+// go into the subcommand, `options.getSubcommand()` works
+await probe.slashCommand("ticket close").withOptions({ reason: "done" }).invoke();
 await probe.slashCommand("ticket admin close").invoke();
 ```
 
 ## `message-component.ts`
 
-`createButtonInvocation`/`createSelectMenuInvocation` bauen die fluent API
-hinter `probe.button(customId)`/`probe.selectMenu(customId)`:
+`createButtonInvocation`/`createSelectMenuInvocation` build the fluent API
+behind `probe.button(customId)`/`probe.selectMenu(customId)`:
 
 ```ts
 await probe.button("open-feedback-modal").click();
-await probe.selectMenu("color-select").withValues(["gruen"]).select();
+await probe.selectMenu("color-select").withValues(["green"]).select();
 ```
 
-`button()` braucht keine `messageId`-Angabe im Testcode – Default `DEFAULT_IDS.message`
-(siehe `MessageComponentOverrides` in `../fixtures/message-component-interaction.ts`)
-passt ohne weiteres Zutun, solange in einem Test nur eine Nachricht im
-Spiel ist. Für mehrere Nachrichten gleichzeitig: den Fixture-Builder direkt
-mit `messageId`-Override + `probe.injectDispatch(...)` verwenden.
+`button()` needs no `messageId` in test code – the default
+`DEFAULT_IDS.message` (see `MessageComponentOverrides` in
+`../fixtures/message-component-interaction.ts`) fits without further ado as
+long as only one message is involved in a test. For several messages at
+once: use the fixture builder directly with a `messageId` override +
+`probe.injectDispatch(...)`.
 
 ## `modal.ts`
 
-`createModalSubmitInvocation` baut die fluent API hinter
+`createModalSubmitInvocation` builds the fluent API behind
 `probe.modal(customId)`:
 
 ```ts
-await probe.modal("feedback-modal").withFields({ "feedback-text": "mehr Kaffee bitte" }).submit();
+await probe.modal("feedback-modal").withFields({ "feedback-text": "more coffee please" }).submit();
 ```
 
-Ob der Bot vorher wirklich `interaction.showModal(...)` mit diesem
-`customId` aufgerufen hat, prüft `probe.lastModal()`/`probe.allModals()`
-(`replies.ts`) – `probe.modal(...).submit()` selbst prüft das nicht, es
-injiziert einfach den Submit.
+Whether the bot really called `interaction.showModal(...)` with this
+`customId` beforehand is checked by `probe.lastModal()`/`probe.allModals()`
+(`replies.ts`) – `probe.modal(...).submit()` itself doesn't check that, it
+just injects the submit.
 
-## Gemeinsames Verhalten von `slashCommand`/`button`/`selectMenu`/`modal`
+## Shared behavior of `slashCommand`/`button`/`selectMenu`/`modal`
 
-Alle vier:
+All four:
 
-- nehmen über `.withContext({ user, member, guild, channel })` an, wer die
-  Interaction wo auslöst (Default: `DEFAULT_IDS`), z.B.
-  `probe.button("ok").withContext({ user: { id: adminId } }).click()`
-- injizieren vorher unsichtbar die Guild der Interaction samt Channel (siehe
-  `buildGuildCreateDispatch`), damit `interaction.channel`/`interaction.guild`
-  echt auflösen – dieselbe versteckte discord.js-Regel wie bei
-  Gateway-Events (`../events/README.md`), hier nur für Interactions
-- warten anschließend auf mindestens einen neuen REST-Call (`waitForNextRequest`
-  in `../core/probe.ts`) – anders als `Probe.emit()`/`injectDispatch()`, die
-  bewusst synchron bleiben und das Warten dem Testcode überlassen. Der
-  Unterschied ist Absicht: Interactions sind der Kernfall, den wir mit
-  möglichst wenig Testcode-Boilerplate abdecken wollen.
+- take who triggers the interaction where via
+  `.withContext({ user, member, guild, channel })` (default: `DEFAULT_IDS`),
+  e.g. `probe.button("ok").withContext({ user: { id: adminId } }).click()`
+- invisibly inject the interaction's guild and channel first (see
+  `buildGuildCreateDispatch`) so `interaction.channel`/`interaction.guild`
+  resolve for real – the same hidden discord.js rule as for gateway events
+  (`../events/README.md`), here just for interactions
+- then wait for at least one new REST call (`waitForNextRequest` in
+  `../core/probe.ts`) – unlike `Probe.emit()`/`injectDispatch()`, which
+  deliberately stay synchronous and leave waiting to the test code. The
+  difference is intentional: interactions are the core case we want to cover
+  with as little test boilerplate as possible.
 
 ## `replies.ts`
 
-`parseReply(request)` liest den sichtbaren Antwort-Inhalt aus einem
-abgefangenen REST-Call – POST `.../interactions/.../callback` (Antwort-Typ
-`ChannelMessageWithSource`) oder PATCH `.../webhooks/.../@original`
-(`editReply()`). Ein reines `deferReply()` ohne Inhalt liefert `undefined`.
-`parseModal(request)` liest analog dazu ein per `showModal(...)` gezeigtes
-Modal (Antwort-Typ `Modal`) – `customId` + `title`.
+`parseReply(request)` reads the visible reply content from a captured REST
+call – POST `.../interactions/.../callback` (response type
+`ChannelMessageWithSource`) or PATCH `.../webhooks/.../@original`
+(`editReply()`). A plain `deferReply()` without content returns `undefined`.
+`parseModal(request)` likewise reads a modal shown via `showModal(...)`
+(response type `Modal`) – `customId` + `title`.
 
-Beide sind nur für Interaction-Antworten relevant, nicht für generische
-REST-Calls wie `channel.send(...)` – die landen unverändert in
+Both are only relevant for interaction replies, not for generic REST calls
+like `channel.send(...)` – those end up unchanged in
 `probe.capturedRequests()`.
 
-`extractText(reply)` liest den sichtbaren Text aus einem `ReplyContent` –
-klassisches `content` genauso wie ein Components-V2-Container
-(`TextDisplay` rekursiv aus `Container`/`Section` geholt). Siehe
+`extractText(reply)` reads the visible text from a `ReplyContent` – classic
+`content` as well as a Components V2 container (`TextDisplay` collected
+recursively from `Container`/`Section`). See
 `docs/testing-message-components.md`.
 
-## Neue Interaction-Art hinzufügen
+## Adding a new interaction kind
 
-1. Fixture-Builder in `../fixtures/` (siehe dessen `README.md` –
-   `buildInteractionContext` als Unterbau wiederverwenden).
-2. Fluent-Invocation hier: `create<Name>Invocation(customId, inject, waitForReply)`
-   nach obigem Muster – `inject`/`waitForReply` bekommt sie von
-   `../core/probe.ts` injiziert, nicht selbst bauen.
-3. Methode + Export in `Probe` (`../core/probe.ts`) ergänzen.
-4. Export in `src/index.ts` ergänzen.
+1. Fixture builder in `../fixtures/` (see its `README.md` – reuse
+   `buildInteractionContext` as the foundation).
+2. Fluent invocation here: `create<Name>Invocation(customId, inject, waitForReply)`
+   following the pattern above – it gets `inject`/`waitForReply` injected by
+   `../core/probe.ts`, don't build them yourself.
+3. Add the method + export to `Probe` (`../core/probe.ts`).
+4. Add the export to `src/index.ts`.

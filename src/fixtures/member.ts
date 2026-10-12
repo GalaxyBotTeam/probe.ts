@@ -2,9 +2,9 @@ import { GuildMemberFlags, type APIInteractionGuildMember } from "discord-api-ty
 import { buildUser } from "./user.js";
 
 /**
- * Baut den `member`-Payload einer Guild-Interaction (`APIInteractionGuildMember`)
- * mit sinnvollen Defaults. Jedes Feld ist über `overrides` änderbar; ohne
- * `overrides.user` wird `buildUser()` verwendet.
+ * Builds the `member` payload of a guild interaction (`APIInteractionGuildMember`)
+ * with sensible defaults. Every field can be changed via `overrides`; without
+ * `overrides.user`, `buildUser()` is used.
  */
 export function buildMember(overrides: Partial<APIInteractionGuildMember> = {}): APIInteractionGuildMember {
   const { user, ...rest } = overrides;
