@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
 import { createWelcomeBot } from "../examples/welcome-bot/bot.js";
-import { createProbe } from "../src/index.js";
+import { createProbe, DEFAULT_IDS } from "../src/index.js";
 
 /**
  * Referenz-Beispiel für die generische Event-API von probe.ts: injiziert
@@ -11,7 +11,7 @@ import { createProbe } from "../src/index.js";
  */
 describe("emit()", () => {
   it("guildMemberAdd: Welcome-Bot begrüßt im richtigen Channel", async () => {
-    const probe = createProbe(createWelcomeBot());
+    const probe = createProbe(createWelcomeBot(DEFAULT_IDS.channel));
     await probe.setup();
 
     probe.emit("guildMemberAdd", { user: { username: "anna" } });
@@ -20,7 +20,7 @@ describe("emit()", () => {
       expect(probe.capturedRequests()).toHaveLength(1);
     });
     const body = probe.capturedRequests()[0]?.body as { content?: string } | undefined;
-    expect(body?.content).toBe("👋 Willkommen, <@1>!");
+    expect(body?.content).toBe(`👋 Willkommen, <@${DEFAULT_IDS.user}>!`);
 
     await probe.teardown();
   });

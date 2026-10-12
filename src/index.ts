@@ -5,6 +5,7 @@ export type { SlashCommandInvocation } from "./interactions/slash-command.js";
 export type { ButtonInvocation, SelectMenuInvocation } from "./interactions/message-component.js";
 export type { ModalSubmitInvocation } from "./interactions/modal.js";
 export { extractText, type ModalContent, type ReplyContent } from "./interactions/replies.js";
+export { DEFAULT_IDS, snowflake } from "./fixtures/ids.js";
 export { buildUser } from "./fixtures/user.js";
 export { buildGuild } from "./fixtures/guild.js";
 export { buildChannel } from "./fixtures/channel.js";

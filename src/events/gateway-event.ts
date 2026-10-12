@@ -1,4 +1,5 @@
 import type { GatewayDispatchPayload } from "discord-api-types/v10";
+import { DEFAULT_IDS } from "../fixtures/ids.js";
 import { buildGuildCreateDispatch } from "../fixtures/guild-create.js";
 import {
   buildGuildMemberAddDispatch,
@@ -65,12 +66,12 @@ export function buildGatewayEventDispatches<K extends GatewayEventName>(
       // Overrides-Typ ausschließlich optionale Felder hat (ein
       // `{}`-Default passt also immer).
       const o = (overrides ?? {}) as GuildMemberAddOverrides;
-      const guildId = o.guildId ?? "1";
+      const guildId = o.guildId ?? DEFAULT_IDS.guild;
       return [buildGuildCreateDispatch({ id: guildId }), buildGuildMemberAddDispatch(o)];
     }
     case "guildMemberRemove": {
       const o = (overrides ?? {}) as GuildMemberRemoveOverrides;
-      const guildId = o.guildId ?? "1";
+      const guildId = o.guildId ?? DEFAULT_IDS.guild;
       const member = buildMember(o.user ? { user: buildUser(o.user) } : {});
       return [buildGuildCreateDispatch({ id: guildId, members: [member] }), buildGuildMemberRemoveDispatch(o)];
     }

@@ -12,7 +12,7 @@ await probe.button("open-feedback-modal").click();
 
 `probe.button(customId)` klickt auf einen Button mit diesem `custom_id`.
 Die `messageId` der Nachricht, an der der Button hängt, muss **nicht**
-angegeben werden – Default `"1"` passt ohne weiteres Zutun, solange in
+angegeben werden – Default `DEFAULT_IDS.message` passt ohne weiteres Zutun, solange in
 einem Test nur eine Nachricht im Spiel ist (der übliche Fall). Mehrere
 Nachrichten gleichzeitig? Fixture-Builder direkt verwenden:
 

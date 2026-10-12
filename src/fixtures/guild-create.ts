@@ -5,6 +5,7 @@ import {
   type GatewayGuildCreateDispatch,
   type GatewayGuildCreateDispatchData,
 } from "discord-api-types/v10";
+import { DEFAULT_IDS } from "./ids.js";
 import { buildChannel, type ChannelFixture } from "./channel.js";
 
 /**
@@ -42,7 +43,7 @@ export function buildGuildCreateDispatch(overrides: GuildCreateOverrides = {}): 
   const channel = buildChannel(overrides.channel);
 
   const guild = {
-    id: overrides.id ?? "1",
+    id: overrides.id ?? DEFAULT_IDS.guild,
     channels: [channel],
     members: overrides.members ?? [],
   } as GatewayGuildCreateDispatchData;

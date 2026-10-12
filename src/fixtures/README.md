@@ -10,7 +10,7 @@ Jeder Builder:
 
 - nimmt ein optionales `overrides`-Objekt (Default `{}`), jedes Feld
   einzeln überschreibbar
-- hat sinnvolle Defaults (`id: "1"` etc. – konsistent über alle Builder,
+- hat sinnvolle Defaults (`DEFAULT_IDS` aus `ids.ts`: echte Snowflakes, konsistent über alle Builder,
   damit z.B. `buildUser({ id: "42" })` und `buildGuild()` ohne weiteres
   Zutun zusammenpassen)
 - ist typisiert gegen `discord-api-types/v10`, nie gegen eine

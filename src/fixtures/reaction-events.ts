@@ -9,6 +9,7 @@ import {
   type GatewayMessageReactionRemoveDispatch,
   type GatewayMessageReactionRemoveDispatchData,
 } from "discord-api-types/v10";
+import { DEFAULT_IDS } from "./ids.js";
 import { buildChannel, type ChannelFixture } from "./channel.js";
 import { buildMember } from "./member.js";
 import { buildUser } from "./user.js";
@@ -40,8 +41,8 @@ export function buildMessageReactionAddDispatch(overrides: ReactionOverrides = {
   const data = {
     user_id: member.user.id,
     channel_id: channel.id,
-    message_id: overrides.messageId ?? "1",
-    guild_id: overrides.guildId ?? "1",
+    message_id: overrides.messageId ?? DEFAULT_IDS.message,
+    guild_id: overrides.guildId ?? DEFAULT_IDS.guild,
     member,
     emoji: buildEmoji(overrides.emoji ?? "👍"),
     burst: false,
@@ -72,8 +73,8 @@ export function buildMessageReactionRemoveDispatch(
   const data = {
     user_id: user.id,
     channel_id: channel.id,
-    message_id: overrides.messageId ?? "1",
-    guild_id: overrides.guildId ?? "1",
+    message_id: overrides.messageId ?? DEFAULT_IDS.message,
+    guild_id: overrides.guildId ?? DEFAULT_IDS.guild,
     emoji: buildEmoji(overrides.emoji ?? "👍"),
     burst: false,
     type: ReactionType.Normal,

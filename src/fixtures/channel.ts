@@ -1,4 +1,5 @@
 import { ChannelType } from "discord-api-types/v10";
+import { DEFAULT_IDS } from "./ids.js";
 
 /** Der `channel`-Payload einer Interaction – discord.js braucht nur `id` + `type`. */
 export interface ChannelFixture {
@@ -12,7 +13,7 @@ export interface ChannelFixture {
  */
 export function buildChannel(overrides: Partial<ChannelFixture> = {}): ChannelFixture {
   return {
-    id: "1",
+    id: DEFAULT_IDS.channel,
     type: ChannelType.GuildText,
     ...overrides,
   };

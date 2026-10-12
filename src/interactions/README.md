@@ -25,7 +25,7 @@ await probe.button("open-feedback-modal").click();
 await probe.selectMenu("color-select").withValues(["gruen"]).select();
 ```
 
-`button()` braucht keine `messageId`-Angabe im Testcode – Default `"1"`
+`button()` braucht keine `messageId`-Angabe im Testcode – Default `DEFAULT_IDS.message`
 (siehe `MessageComponentOverrides` in `../fixtures/message-component-interaction.ts`)
 passt ohne weiteres Zutun, solange in einem Test nur eine Nachricht im
 Spiel ist. Für mehrere Nachrichten gleichzeitig: den Fixture-Builder direkt

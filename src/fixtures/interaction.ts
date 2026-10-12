@@ -9,6 +9,7 @@ import {
   type APIChatInputApplicationCommandInteraction,
   type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
+import { DEFAULT_IDS, snowflake } from "./ids.js";
 import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
 
 /** Slash-Command-Optionen als Name→Wert-Paare; der Options-Typ wird aus dem JS-Wert abgeleitet. */
@@ -44,8 +45,8 @@ export function buildSlashCommandInteractionDispatch(
   const { channel, guild, member } = buildInteractionContext(overrides);
 
   const interaction = {
-    id: "1",
-    application_id: "0",
+    id: snowflake(),
+    application_id: DEFAULT_IDS.application,
     type: InteractionType.ApplicationCommand,
     token: "interaction-token",
     version: 1,
@@ -64,7 +65,7 @@ export function buildSlashCommandInteractionDispatch(
     guild,
     member,
     data: {
-      id: "100",
+      id: DEFAULT_IDS.command,
       name,
       type: ApplicationCommandType.ChatInput,
       options: overrides.options ? toInteractionDataOptions(overrides.options) : [],

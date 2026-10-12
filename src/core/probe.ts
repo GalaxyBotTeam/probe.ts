@@ -3,6 +3,7 @@ import type { Client } from "discord.js";
 import type { ApplicationFlags, GatewayDispatchPayload, GatewayReadyDispatchData } from "discord-api-types/v10";
 import { buildGatewayEventDispatches, type GatewayEventName, type GatewayEventOverrides } from "../events/gateway-event.js";
 import { buildGuildCreateDispatch } from "../fixtures/guild-create.js";
+import { DEFAULT_IDS } from "../fixtures/ids.js";
 import { createButtonInvocation, createSelectMenuInvocation, type ButtonInvocation, type SelectMenuInvocation } from "../interactions/message-component.js";
 import { createModalSubmitInvocation, type ModalSubmitInvocation } from "../interactions/modal.js";
 import { parseModal, parseReply, type ModalContent, type ReplyContent } from "../interactions/replies.js";
@@ -24,12 +25,12 @@ async function waitUntil(condition: () => boolean, timeoutMs = 1000): Promise<vo
 /** Minimaler READY-Payload – reicht discord.js, um sofort "AllReady" zu melden. */
 const FAKE_READY_DATA = {
   v: 10,
-  user: { id: "0", username: "probe", discriminator: "0000", global_name: null, avatar: null, bot: true },
+  user: { id: DEFAULT_IDS.bot, username: "probe", discriminator: "0000", global_name: null, avatar: null, bot: true },
   guilds: [],
   session_id: "probe-session",
   resume_gateway_url: "wss://gateway.discord.gg",
   shard: [0, 1],
-  application: { id: "0", flags: 0 as ApplicationFlags, flags_new: "0" },
+  application: { id: DEFAULT_IDS.application, flags: 0 as ApplicationFlags, flags_new: "0" },
 } satisfies GatewayReadyDispatchData;
 
 /**
@@ -57,7 +58,7 @@ export interface Probe {
   capturedRequests(): readonly CapturedRequest[];
   /** Baut einen Slash-Command-Aufruf (`.withOptions(...).invoke()`). */
   slashCommand(name: string): SlashCommandInvocation;
-  /** Baut einen Button-Klick (`.click()`) – Default-`messageId` `"1"` (siehe `MessageComponentOverrides`). */
+  /** Baut einen Button-Klick (`.click()`) – Default-`messageId` `DEFAULT_IDS.message` (siehe `MessageComponentOverrides`). */
   button(customId: string): ButtonInvocation;
   /** Baut eine Select-Menu-Auswahl (`.withValues([...]).select()`). Deckt aktuell nur String-Select ab. */
   selectMenu(customId: string): SelectMenuInvocation;

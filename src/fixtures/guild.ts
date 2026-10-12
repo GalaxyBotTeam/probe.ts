@@ -1,4 +1,5 @@
 import { Locale, type APIPartialInteractionGuild } from "discord-api-types/v10";
+import { DEFAULT_IDS } from "./ids.js";
 
 /**
  * Baut den `guild`-Payload einer Interaction (`APIPartialInteractionGuild`)
@@ -6,7 +7,7 @@ import { Locale, type APIPartialInteractionGuild } from "discord-api-types/v10";
  */
 export function buildGuild(overrides: Partial<APIPartialInteractionGuild> = {}): APIPartialInteractionGuild {
   return {
-    id: "1",
+    id: DEFAULT_IDS.guild,
     features: [],
     locale: Locale.EnglishUS,
     ...overrides,
