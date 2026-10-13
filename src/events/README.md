@@ -14,7 +14,7 @@ cache – otherwise the event is silently ignored (no error, no emitted client
 event). `gateway-event.ts` sets that up automatically, invisible to the test
 code:
 
-- **every member/message/reaction event**: first a `GUILD_CREATE` (see
+- **every member/message/reaction/audit log event**: first a `GUILD_CREATE` (see
   `../fixtures/guild-create.ts`) that puts guild + channel into the cache
 - **`guildMemberRemove`**: the `GUILD_CREATE` already gets the member in its
   members list (otherwise discord.js emits no real `GuildMember`)

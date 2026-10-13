@@ -29,10 +29,12 @@ Every builder:
 | `interaction.ts`                    | `buildSlashCommandInteractionDispatch`                             | `INTERACTION_CREATE` (slash command, incl. subcommands) |
 | `message-component-interaction.ts`  | `buildButtonInteractionDispatch`, `buildSelectMenuInteractionDispatch` | `INTERACTION_CREATE` (button click, string select) |
 | `modal-interaction.ts`              | `buildModalSubmitInteractionDispatch`                              | `INTERACTION_CREATE` (modal submit)       |
+| `context-menu-interaction.ts`       | `buildUserContextMenuInteractionDispatch`, `buildMessageContextMenuInteractionDispatch` | `INTERACTION_CREATE` (user/message context menu, target under `resolved`) |
 | `guild-create.ts`                   | `buildGuildCreateDispatch`, `buildRole`                            | `GUILD_CREATE` – cache preparation (owner, `@everyone`, bot as admin member) |
 | `guild-member-events.ts`            | `buildGuildMemberAddDispatch`, `buildGuildMemberRemoveDispatch`    | `GUILD_MEMBER_ADD`/`_REMOVE`              |
 | `message-events.ts`                 | `buildMessageCreateDispatch`, `buildMessageDeleteDispatch`         | `MESSAGE_CREATE`/`_DELETE`                |
 | `reaction-events.ts`                | `buildMessageReactionAddDispatch`, `buildMessageReactionRemoveDispatch` | `MESSAGE_REACTION_ADD`/`_REMOVE` (unicode emoji only, no custom server emoji) |
+| `audit-log-events.ts`               | `buildGuildAuditLogEntryCreateDispatch`                            | `GUILD_AUDIT_LOG_ENTRY_CREATE`            |
 
 `interaction-context.ts` is the shared foundation for **every** interaction
 kind (slash command, button, select menu, modal submit): who triggered it,

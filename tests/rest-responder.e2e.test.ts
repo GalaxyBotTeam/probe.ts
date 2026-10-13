@@ -1,6 +1,15 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, GatewayIntentBits, type Message } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  Client,
+  DiscordAPIError,
+  GatewayIntentBits,
+  RESTEvents,
+  type Message,
+} from "discord.js";
 import { describe, expect, it, vi } from "vitest";
-import { createProbe, DEFAULT_IDS } from "../src/index.js";
+import { createProbe, DEFAULT_IDS, restError } from "../src/index.js";
 
 /**
  * Reference example for probe.ts's REST responses: routes Discord answers
@@ -73,6 +82,58 @@ describe("REST responses", () => {
     await probe.slashCommand("invites").invoke();
 
     expect(probe.lastReply()?.content).toBe("0 invites");
+
+    await probe.teardown();
+  });
+
+  it("restError(): the bot gets a real DiscordAPIError with Discord's code", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.guild) return;
+      try {
+        await interaction.guild.channels.fetch("42");
+      } catch (error) {
+        await interaction.reply(error instanceof DiscordAPIError ? `failed: ${error.code}` : "unexpected error");
+      }
+    });
+    const probe = createProbe(client);
+    probe.respond("GET", /\/channels\/42$/, () => restError(404, { code: 10003, message: "Unknown Channel" }));
+    await probe.setup();
+
+    await probe.slashCommand("channel").invoke();
+
+    expect(probe.lastReply()?.content).toBe("failed: 10003");
+    expect(probe.timeline().find((entry) => entry.kind === "request")).toMatchObject({ status: 404 });
+
+    await probe.teardown();
+  });
+
+  it("restError(): a one-time 429 makes discord.js wait for Retry-After and send the call again", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    const statuses: number[] = [];
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.channel?.isSendable()) return;
+      await interaction.channel.send("after the rate limit");
+    });
+    const probe = createProbe(client);
+    // after createProbe(): it replaces client.rest – the 429 is only visible on this event, like for real bots
+    client.rest.on(RESTEvents.Response, (_request, response) => statuses.push(response.status));
+    let limited = false;
+    probe.respond("POST", /\/channels\/\d+\/messages$/, () => {
+      if (limited) return undefined;
+      limited = true;
+      return restError(429, { message: "You are being rate limited.", retry_after: 0.01, global: false }, { "Retry-After": "0.01" });
+    });
+    await probe.setup();
+
+    await probe.slashCommand("send").invoke();
+
+    await vi.waitFor(() => {
+      expect(probe.capturedRequests()).toHaveLength(2);
+    });
+    // the first 200 is `/gateway/bot` from setup()
+    expect(statuses).toEqual([200, 429, 200]);
+    expect((probe.capturedRequests()[1]?.body as { content?: string }).content).toBe("after the rate limit");
 
     await probe.teardown();
   });

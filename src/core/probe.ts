@@ -1,4 +1,4 @@
-import { REST } from "@discordjs/rest";
+import type { REST } from "@discordjs/rest";
 import type { Client } from "discord.js";
 import type {
   ApplicationFlags,
@@ -9,6 +9,7 @@ import type {
 import { buildGatewayEventDispatches, type GatewayEventName, type GatewayEventOverrides } from "../events/gateway-event.js";
 import { buildGuildCreateDispatch } from "../fixtures/guild-create.js";
 import { DEFAULT_IDS } from "../fixtures/ids.js";
+import { createContextMenuInvocation, type ContextMenuInvocation } from "../interactions/context-menu.js";
 import { createButtonInvocation, createSelectMenuInvocation, type ButtonInvocation, type SelectMenuInvocation } from "../interactions/message-component.js";
 import { createModalSubmitInvocation, type ModalSubmitInvocation } from "../interactions/modal.js";
 import { parseModal, parseReply, type ModalContent, type ReplyContent } from "../interactions/replies.js";
@@ -82,6 +83,8 @@ export interface Probe {
   exportTimeline(filePath: string): Promise<void>;
   /** Builds a slash command invocation (`.withOptions(...).invoke()`). Subcommands as in Discord: `"ticket close"`, `"ticket admin close"`. */
   slashCommand(name: string): SlashCommandInvocation;
+  /** Builds a context menu command (`.onUser(...)` / `.onMessage(...)`), e.g. `probe.contextMenu("Warn").onUser({ id: "42" })`. */
+  contextMenu(name: string): ContextMenuInvocation;
   /**
    * Builds a button click (`.click()`) on the message the bot sent last
    * (before the first one: `DEFAULT_IDS.message`) – so collectors bound to
@@ -95,7 +98,8 @@ export interface Probe {
    * path) – for routes where the bot expects a body, e.g.
    * `probe.respond("GET", /\/guilds\/\d+\/invites$/, () => [])`. Takes
    * precedence over the built-in message routes; without a matching route
-   * the response is an empty 204.
+   * the response is an empty 204. Return `restError(status, body)` to let
+   * the call fail like Discord would (404, 403, 429, ...).
    */
   respond(method: string, path: RegExp, responder: RestResponder): void;
   /** Builds a modal submit (`.withFields({...}).submit()`). */
@@ -118,7 +122,10 @@ export interface Probe {
 export function createProbe(client: Client): Probe {
   const timeline = new Timeline();
   const rest = new RestAdapter(timeline.record);
-  client.rest = new REST({ ...client.options.rest, makeRequest: rest.makeRequest });
+  // The client's own REST class, not our import: with ESM and CJS copies of @discordjs/rest
+  // side by side, `error instanceof DiscordAPIError` in bot code would fail otherwise.
+  const ClientREST = client.rest.constructor as typeof REST;
+  client.rest = new ClientREST({ ...client.options.rest, makeRequest: rest.makeRequest });
 
   let gateway: GatewayAdapter | undefined;
   client.options.ws = {
@@ -209,6 +216,9 @@ export function createProbe(client: Client): Probe {
     },
     slashCommand(name) {
       return createSlashCommandInvocation(name, injectInteraction, waitForNextRequest);
+    },
+    contextMenu(name) {
+      return createContextMenuInvocation(name, injectInteraction, waitForNextRequest);
     },
     button(customId) {
       return createButtonInvocation(customId, injectInteraction, waitForNextRequest, () => rest.lastMessageId);

@@ -2,7 +2,7 @@
 
 Besides slash commands, probe.ts can inject generic gateway events –
 `guildMemberAdd`, `guildMemberRemove`, `messageCreate`, `messageDelete`,
-`messageReactionAdd`, `messageReactionRemove`. That covers most classic
+`messageReactionAdd`, `messageReactionRemove`, `guildAuditLogEntryCreate`. That covers most classic
 hobby bot logic: welcome messages, goodbye messages, prefix commands,
 reaction roles, simple logging handlers.
 
@@ -57,9 +57,12 @@ expect(body.content).toBe(`👋 Welcome, <@${DEFAULT_IDS.user}>!`);
 | `messageDelete`         | `{ id?, channel?, guildId? }`                       |
 | `messageReactionAdd`    | `{ emoji?, user?, messageId?, channel?, guildId? }` |
 | `messageReactionRemove` | `{ emoji?, user?, messageId?, channel?, guildId? }` |
+| `guildAuditLogEntryCreate` | `{ actionType?, targetId?, executorId?, changes?, options?, reason?, guildId? }` |
 
 All fields are optional and have the same defaults as the other fixture
-builders (IDs from `DEFAULT_IDS`, `emoji: "👍"`).
+builders (IDs from `DEFAULT_IDS`, `emoji: "👍"`). `guildAuditLogEntryCreate` defaults to a ban
+(`AuditLogEvent.MemberBanAdd`) of `DEFAULT_IDS.user` by `DEFAULT_IDS.owner`; the bot needs the
+`GuildModeration` intent to receive it on real Discord.
 
 ## The hidden Discord rule: the guild must be known
 

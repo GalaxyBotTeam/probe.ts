@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, PermissionFlagsBits } from "discord.js";
+import { AuditLogEvent, Client, GatewayIntentBits, type GuildAuditLogsEntry, PermissionFlagsBits } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
 import { createWelcomeBot } from "../examples/welcome-bot/bot.js";
 import { createProbe, DEFAULT_IDS } from "../src/index.js";
@@ -81,6 +81,34 @@ describe("emit()", () => {
     await vi.waitFor(() => {
       expect(deletedId).toBe("99");
     });
+
+    await probe.teardown();
+  });
+
+  it("guildAuditLogEntryCreate: emits a real GuildAuditLogsEntry with target, executor and changes", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildModeration] });
+    let entry: GuildAuditLogsEntry | undefined;
+    client.on("guildAuditLogEntryCreate", (created) => {
+      entry = created;
+    });
+    const probe = createProbe(client);
+    await probe.setup();
+
+    probe.emit("guildAuditLogEntryCreate", {
+      actionType: AuditLogEvent.MemberUpdate,
+      targetId: "42",
+      changes: [{ key: "communication_disabled_until", new_value: "2030-01-01T00:00:00.000Z" }],
+      reason: "spam",
+    });
+
+    await vi.waitFor(() => {
+      expect(entry).toBeDefined();
+    });
+    expect(entry?.action).toBe(AuditLogEvent.MemberUpdate);
+    expect(entry?.targetId).toBe("42");
+    expect(entry?.executorId).toBe(DEFAULT_IDS.owner);
+    expect(entry?.reason).toBe("spam");
+    expect(entry?.changes).toEqual([{ key: "communication_disabled_until", new: "2030-01-01T00:00:00.000Z" }]);
 
     await probe.teardown();
   });

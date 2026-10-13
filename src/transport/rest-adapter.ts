@@ -22,11 +22,36 @@ export interface RestResponderContext {
 }
 
 /**
- * Returns the JSON body Discord would have answered a call with.
- * `undefined` means: this responder isn't responsible, the next one (or the
- * empty 204 response) takes over.
+ * Returns the JSON body Discord would have answered a call with, or a
+ * `restError(...)` for a failed call. `undefined` means: this responder isn't
+ * responsible, the next one (or the empty 204 response) takes over.
  */
 export type RestResponder = (context: RestResponderContext) => unknown;
+
+/** A failed Discord answer, created by `restError()`. */
+export class RestErrorResponse {
+  constructor(
+    readonly status: number,
+    readonly body: unknown,
+    readonly headers: Readonly<Record<string, string>>,
+  ) {}
+}
+
+/**
+ * Lets a `probe.respond()` responder fail the call like Discord would –
+ * discord.js then throws a real `DiscordAPIError` (or handles a 429 itself):
+ *
+ * ```ts
+ * probe.respond("GET", /\/channels\/\d+$/, () => restError(404, { code: 10003, message: "Unknown Channel" }));
+ * ```
+ *
+ * A 429 needs a `Retry-After` header (seconds) – discord.js waits that long
+ * and sends the call again, so let the responder fail only once (return
+ * `undefined` afterwards), otherwise it retries forever.
+ */
+export function restError(status: number, body: unknown = {}, headers: Record<string, string> = {}): RestErrorResponse {
+  return new RestErrorResponse(status, body, headers);
+}
 
 interface Route {
   method: string;
@@ -34,7 +59,7 @@ interface Route {
   respond: RestResponder;
 }
 
-function jsonResponse(status: number, data: unknown): ResponseLike {
+function jsonResponse(status: number, data: unknown, headers: Record<string, string> = {}): ResponseLike {
   const text = JSON.stringify(data);
   return {
     ok: status >= 200 && status < 300,
@@ -42,9 +67,8 @@ function jsonResponse(status: number, data: unknown): ResponseLike {
     statusText: "",
     bodyUsed: false,
     body: null,
-    headers: {
-      get: (name: string) => (name.toLowerCase() === "content-type" ? "application/json" : null),
-    } as unknown as ResponseLike["headers"],
+    // undici's `Headers` type differs from the global one only in its iterator typings
+    headers: new Headers({ ...headers, "content-type": "application/json" }) as unknown as ResponseLike["headers"],
     json: async () => data,
     text: async () => text,
     arrayBuffer: async () => new TextEncoder().encode(text).buffer,
@@ -57,7 +81,7 @@ const emptyResponse: ResponseLike = {
   statusText: "No Content",
   bodyUsed: false,
   body: null,
-  headers: { get: () => null } as unknown as ResponseLike["headers"],
+  headers: new Headers() as unknown as ResponseLike["headers"],
   json: async () => {
     throw new Error("no body");
   },
@@ -123,6 +147,10 @@ export class RestAdapter {
       const match = route.method === request.method ? path.match(route.path) : null;
       if (!match) continue;
       const data = route.respond({ match, request });
+      if (data instanceof RestErrorResponse) {
+        this.record({ kind: "request", ...request, status: data.status, response: data.body });
+        return jsonResponse(data.status, data.body, { ...data.headers });
+      }
       if (data !== undefined) {
         this.record({ kind: "request", ...request, status: 200, response: data });
         return jsonResponse(200, data);

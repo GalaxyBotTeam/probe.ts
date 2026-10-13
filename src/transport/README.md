@@ -56,7 +56,9 @@ answers it without network:
   kept in `lastMessageId` as the default target for
   `probe.button()`/`selectMenu()`
 - routes registered via `probe.respond(method, path, responder)` (take
-  precedence over the built-in ones), e.g. lists the bot loads via `GET`
+  precedence over the built-in ones), e.g. lists the bot loads via `GET`;
+  a responder returning `restError(status, body, headers?)` answers with that
+  status, so discord.js throws a real `DiscordAPIError` (or waits out a 429)
 - everything else: empty 204 response
 
 ## Extension point

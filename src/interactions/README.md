@@ -54,9 +54,19 @@ Whether the bot really called `interaction.showModal(...)` with this
 (`replies.ts`) – `probe.modal(...).submit()` itself doesn't check that, it
 just injects the submit.
 
-## Shared behavior of `slashCommand`/`button`/`selectMenu`/`modal`
+## `context-menu.ts`
 
-All four:
+`createContextMenuInvocation` builds the fluent API behind
+`probe.contextMenu(name)` – the target decides the command type:
+
+```ts
+await probe.contextMenu("Warn").onUser({ id: "42" });
+await probe.contextMenu("Report").onMessage({ content: "spam" });
+```
+
+## Shared behavior of `slashCommand`/`contextMenu`/`button`/`selectMenu`/`modal`
+
+All five:
 
 - take who triggers the interaction where via
   `.withContext({ user, member, guild, channel })` (default: `DEFAULT_IDS`),
