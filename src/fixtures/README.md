@@ -13,7 +13,7 @@ Every builder:
   consistent across all builders, so e.g. `buildUser({ id: "42" })` and
   `buildGuild()` fit together without further ado)
 - is typed against `discord-api-types/v10`, never against a hand-rolled
-  shape (see the `build-gateway-payload` skill)
+  shape
 
 ## Builder overview
 
@@ -49,8 +49,7 @@ selects follow the same pattern, just a different `component_type` +
 required fields, and building them all out makes practically no sense. Only
 the fields discord.js' `Guild._patch()` actually reads unguarded are set –
 the rest is cast (`as`, with the rationale in the file comment). This is the
-only documented exception to "always `satisfies`" in this folder (see
-`.claude/rules/typescript-conventions.md`).
+only documented exception to "always `satisfies`" in this folder.
 
 ## Adding a new builder
 

@@ -34,12 +34,11 @@ await probe.button("open-feedback-modal").click();
 await probe.selectMenu("color-select").withValues(["green"]).select();
 ```
 
-`button()` needs no `messageId` in test code – the default
-`DEFAULT_IDS.message` (see `MessageComponentOverrides` in
-`../fixtures/message-component-interaction.ts`) fits without further ado as
-long as only one message is involved in a test. For several messages at
-once: use the fixture builder directly with a `messageId` override +
-`probe.injectDispatch(...)`.
+`button()`/`selectMenu()` need no `messageId` in test code – they target
+the message the bot sent last (`lastMessageId` of the fake REST layer, see
+`../transport/README.md`; before the first one: `DEFAULT_IDS.message`). For
+an older message: use the fixture builder directly with a `messageId`
+override + `probe.injectDispatch(...)`.
 
 ## `modal.ts`
 
@@ -95,7 +94,8 @@ recursively from `Container`/`Section`). See
 1. Fixture builder in `../fixtures/` (see its `README.md` – reuse
    `buildInteractionContext` as the foundation).
 2. Fluent invocation here: `create<Name>Invocation(customId, inject, waitForReply)`
-   following the pattern above – it gets `inject`/`waitForReply` injected by
+   following the pattern above (message components additionally get a
+   `defaultMessageId` getter) – it gets `inject`/`waitForReply` injected by
    `../core/probe.ts`, don't build them yourself.
 3. Add the method + export to `Probe` (`../core/probe.ts`).
 4. Add the export to `src/index.ts`.

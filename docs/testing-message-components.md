@@ -10,11 +10,10 @@ await probe.slashCommand("feedback").invoke();
 await probe.button("open-feedback-modal").click();
 ```
 
-`probe.button(customId)` clicks a button with this `custom_id`. The
-`messageId` of the message the button is attached to does **not** have to
-be given – the default `DEFAULT_IDS.message` fits without further ado as
-long as only one message is involved in a test (the usual case). Several
-messages at once? Use the fixture builder directly:
+`probe.button(customId)` clicks a button with this `custom_id` on the
+message the bot sent last (`channel.send()`/`followUp()`/`editReply()`;
+before the first one: `DEFAULT_IDS.message`) – so collectors bound to that
+message fire too. Need an older message? Use the fixture builder directly:
 
 ```ts
 import { buildButtonInteractionDispatch } from "probe.ts";

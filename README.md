@@ -1,5 +1,8 @@
 ![Probe Logo](https://s3.galaxybot.app/media/probe/readmeBanner.png?v=2)
 
+> [!WARNING]
+> **Work in progress.** probe.ts is freshly built and not yet battle-tested at scale — the public API may still change before a stable `v0.1.0`. Feedback and bug reports are very welcome.
+
 probe.ts is a lightweight testing framework for [discord.js](https://discord.js.org/) bots, built to make testing commands, components, and events fast, deterministic, and completely offline.
 
 ## Overview
@@ -10,7 +13,9 @@ probe.ts solves this at the transport layer instead: it fakes only the two bound
 
 ## Key Features
 
-- Test **Slash Commands** — including options, `deferReply()`/`editReply()`
+- Test **Slash Commands** — including options, subcommands (groups), `deferReply()`/`editReply()`
+- Choose **who** triggers an interaction **where** with `withContext()` (user, member, guild, channel)
+- Answer REST calls your bot reads from (e.g. `GET` lists) with `probe.respond()`
 - Test **Buttons**, **Select Menus**, and **Modals** — including discord.js's own collectors (`awaitMessageComponent()`, `awaitModalSubmit()`, ...)
 - Test **Gateway Events** — member join/leave, message create/delete, reactions, prefix commands
 - Evaluate **Components V2 containers** with `extractText()` — no manual tree-walking
@@ -52,17 +57,20 @@ export function createPingBot(): Client {
 
 ```ts
 // bot.test.ts
+import { expect, it } from "vitest";
 import { createProbe } from "probe.ts";
 import { createPingBot } from "./bot.js";
 
-const probe = createProbe(createPingBot());
-await probe.setup();
+it("/ping replies with Pong", async () => {
+  const probe = createProbe(createPingBot());
+  await probe.setup();
 
-await probe.slashCommand("ping").invoke();
+  await probe.slashCommand("ping").invoke();
 
-expect(probe.lastReply()).toMatchObject({ content: "🏓 Pong!" });
+  expect(probe.lastReply()).toMatchObject({ content: "🏓 Pong!" });
 
-await probe.teardown();
+  await probe.teardown();
+});
 ```
 
 ## Testing Gateway Events
@@ -128,11 +136,9 @@ probe.ts works with discord.js v14+. You can integrate it without modifying your
 
 ## Current Status
 
-**Implemented:** Slash Commands (incl. user options), Buttons/Select Menus (string-select)/Modals with collectors, per-interaction user/guild/channel via `withContext()`, real `Message` responses for `channel.send()`/`followUp()`/`editReply()` plus custom REST responses via `probe.respond()`, the gateway events listed above, Components V2 container evaluation.
+**Implemented:** Slash Commands (incl. user options and subcommands/groups), Buttons/Select Menus (string-select)/Modals with collectors, per-interaction user/guild/channel via `withContext()`, real `Message` responses for `channel.send()`/`followUp()`/`editReply()` plus custom REST responses via `probe.respond()`, the gateway events listed above, Components V2 container evaluation.
 
-**Not yet supported:** custom Vitest matchers, other select-menu types (user/role/mentionable/channel), a `Message` from `interaction.reply({ withResponse: true })`, embed snapshot testing, permission/role simulation.
-
-⚠️ **Pre-release.** probe.ts is freshly built and not yet battle-tested at scale — the public API may still change before a stable `v0.1.0`. Feedback and bug reports are very welcome.
+**Not yet supported:** custom Vitest matchers, other select-menu types (user/role/mentionable/channel), a `Message` from `interaction.reply({ withResponse: true })`, `followUp()` in `lastReply()`/`allReplies()` (it only shows up in `capturedRequests()`), embed snapshot testing, timer control for collectors, permission/role simulation.
 
 ## Use Cases
 

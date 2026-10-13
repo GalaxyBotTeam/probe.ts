@@ -19,6 +19,7 @@ code itself (the client + its event listeners) stays completely untouched.
 | `slashCommand(name)`    | Fluent slash command invocation – see `../interactions/README.md`   |
 | `button(customId)`/`selectMenu(customId)`/`modal(customId)` | Fluent component/modal invocation – see `../interactions/README.md` |
 | `capturedRequests()`    | All captured REST calls, raw                                        |
+| `respond(method, path, responder)` | Custom REST response body for a route – see `../transport/README.md` |
 | `lastReply()`/`allReplies()` | Parsed interaction replies (`reply`/`editReply`)               |
 | `lastModal()`/`allModals()` | Parsed `showModal(...)` calls                                   |
 
