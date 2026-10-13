@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>probe.ts Timeline</title>
+<style>
+  :root { --bg: #fff; --fg: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea; --hover: #f5f5f7; --sel: #e8f0fe; --in: #2f6fde; --out: #1f9d55; --pass: #1f9d55; --fail: #d93025; --skip: #9aa0a6; --warn: #c2410c; --head: 54px; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #e8e8ed; --muted: #8e8e93; --line: #2c2c2e; --hover: #1f1f22; --sel: #1d2a44; --in: #6ea0ff; --out: #4ad08a; --pass: #4ad08a; --fail: #ff6b5e; --skip: #6e6e73; --warn: #fb923c; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; height: var(--head); background: var(--bg); border-bottom: 1px solid var(--line); padding: 0 16px; display: flex; gap: 12px; align-items: center; }
+  h1 { font-size: 15px; margin: 0; white-space: nowrap; }
+  input[type=search] { flex: 1; min-width: 120px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+  .muted, .dur { color: var(--muted); }
+  .dur { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #drop { margin: 40px 16px; padding: 48px 16px; border: 2px dashed var(--line); border-radius: 12px; text-align: center; color: var(--muted); }
+  #drop.over { border-color: var(--in); color: var(--fg); }
+
+  /* run overview: one segment per file, one block per test, widths ∝ duration */
+  #overview { padding: 12px 16px 14px; border-bottom: 1px solid var(--line); }
+  #overview .meta { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-bottom: 6px; }
+  #bar { display: flex; gap: 4px; }
+  .bar-file { display: flex; flex-direction: column; gap: 3px; min-width: 6px; }
+  .bar-file-name { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-tests { display: flex; gap: 1px; height: 24px; border-radius: 4px; overflow: hidden; }
+  .bar-test { min-width: 3px; border: 0; padding: 0; cursor: pointer; background: var(--skip); }
+  .bar-test.passed { background: var(--pass); } .bar-test.failed { background: var(--fail); }
+  .bar-test:hover { opacity: .75; }
+  .bar-test.selected { box-shadow: inset 0 0 0 2px var(--fg); }
+
+  .layout { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; }
+  aside { position: sticky; top: var(--head); align-self: start; max-height: calc(100vh - var(--head)); overflow: auto; border-right: 1px solid var(--line); }
+  .file > summary { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 12px; cursor: pointer; font-weight: 600; }
+  .file-name, .test-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .test-btn { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: baseline; width: 100%; padding: 5px 12px 5px 22px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .test-btn:hover { background: var(--hover); }
+  .test-btn[aria-current=true] { background: var(--sel); }
+  .test-btn.nomatch { opacity: .4; }
+  .icon { font-weight: 700; text-align: center; }
+  .icon.passed { color: var(--pass); } .icon.failed { color: var(--fail); } .icon.skipped, .icon.unknown { color: var(--skip); }
+
+  main { min-width: 0; }
+  .file-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0; padding: 12px 16px; font-size: 15px; border-bottom: 1px solid var(--line); }
+  section.test { scroll-margin-top: var(--head); }
+  section.test > h3 { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: baseline; margin: 0; padding: 8px 16px; font-size: 14px; background: var(--hover); border-bottom: 1px solid var(--line); }
+  section.test.selected > h3 { background: var(--sel); }
+  .empty { margin: 0; padding: 8px 16px; color: var(--muted); font-size: 13px; }
+
+  .row { border-bottom: 1px solid var(--line); }
+  .row > summary { display: grid; grid-template-columns: 70px 60px 20px 1fr auto; gap: 8px; padding: 6px 16px; cursor: pointer; list-style: none; font-family: ui-monospace, monospace; font-size: 13px; }
+  .row > summary::-webkit-details-marker { display: none; }
+  .row > summary:hover { background: var(--hover); }
+  .at, .delta { color: var(--muted); text-align: right; }
+  .dispatch .dir { color: var(--in); } .request .dir { color: var(--out); }
+  .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status { color: var(--muted); } .status.err { color: var(--warn); }
+  pre { margin: 0; padding: 8px 16px 12px 174px; overflow-x: auto; font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 700px) {
+    header input[type=file] { max-width: 110px; }
+    .layout { grid-template-columns: 1fr; }
+    aside { position: static; max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--line); }
+    .row > summary { grid-template-columns: 56px 20px 1fr auto; } .delta { display: none; } pre { padding-left: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>probe.ts Timeline</h1>
+  <input type="search" id="filter" placeholder="Filter (test, event, url, body …)" aria-label="Filter">
+  <input type="file" id="file" accept=".json,application/json" multiple aria-label="Open timeline JSON files">
+  <span id="count" class="dur"></span>
+</header>
+<div id="drop">Drop one or more timeline JSONs here (from <code>probe.exportTimeline()</code> or <code>[{ file, test, status, duration, entries }]</code>), or pick files above.</div>
+<div id="app" hidden>
+  <div id="overview">
+    <div class="meta"><span id="summary"></span><span id="total" class="muted"></span></div>
+    <div id="bar"></div>
+  </div>
+  <div class="layout">
+    <aside id="tests" aria-label="Tests by file"></aside>
+    <main id="list"></main>
+  </div>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const STATUS = { passed: "✓", failed: "✗", skipped: "–", unknown: "•" };
+
+  /** Map file → tests `{ file, test, status, duration, entries }`, in load order. */
+  let files = new Map();
+  let selected = null;
+
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const fmt = (ms) => ms < 1000 ? `${ms.toFixed(1)} ms` : `${(ms / 1000).toFixed(2)} s`;
+  const span = (entries) => entries.length ? entries.at(-1).at - entries[0].at : 0;
+  const sum = (tests) => tests.reduce((total, t) => total + t.duration, 0);
+  const isEntry = (e) => e?.kind === "dispatch" || e?.kind === "request";
+  const label = (e) => e.kind === "dispatch" ? e.event : `${e.method} ${new URL(e.url).pathname.replace(/^\/api\/v\d+/, "")}`;
+  const detail = (e) => e.kind === "dispatch" ? { data: e.data } : { body: e.body, response: e.response };
+  const matches = (t, q) => !q || t.test.toLowerCase().includes(q) || t.entries.some((e) => JSON.stringify(e).toLowerCase().includes(q));
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function icon(status) {
+    const node = el("span", `icon ${status}`, STATUS[status]);
+    node.title = status;
+    node.setAttribute("aria-label", status);
+    return node;
+  }
+
+  /** A flat entry array becomes one test; groups get defaults for missing fields. */
+  function normalize(data, fileName) {
+    if (!Array.isArray(data)) throw new Error("expected a JSON array");
+    if (data.every(isEntry)) return [{ file: fileName, test: "timeline", status: "unknown", duration: span(data), entries: data }];
+    if (!data.every((g) => Array.isArray(g?.entries) && g.entries.every(isEntry))) throw new Error("expected timeline entries or { test, entries } groups");
+    return data.map((g) => ({
+      file: String(g.file ?? fileName),
+      test: String(g.test ?? "unnamed test"),
+      status: Object.hasOwn(STATUS, g.status) ? g.status : "unknown",
+      duration: typeof g.duration === "number" ? g.duration : span(g.entries),
+      entries: g.entries,
+    }));
+  }
+
+  function renderOverview() {
+    const bar = $("bar");
+    bar.replaceChildren();
+    let total = 0, count = 0, failed = 0;
+    for (const [file, tests] of files) {
+      const fileTotal = sum(tests);
+      total += fileTotal;
+      const seg = el("div", "bar-file");
+      seg.style.flex = `${Math.max(fileTotal, 1)} 1 0`;
+      const row = el("div", "bar-tests");
+      for (const t of tests) {
+        count++;
+        if (t.status === "failed") failed++;
+        const block = el("button", `bar-test ${t.status}${t === selected ? " selected" : ""}`);
+        // minimum share keeps 0 ms tests clickable
+        block.style.flex = `${Math.max(t.duration, fileTotal * 0.01, 0.1)} 1 0`;
+        block.title = `${file} › ${t.test} · ${fmt(t.duration)} · ${t.status}`;
+        block.setAttribute("aria-label", block.title);
+        block.addEventListener("click", () => select(t));
+        row.append(block);
+      }
+      const name = el("span", "bar-file-name", file);
+      name.title = `${file} · ${fmt(fileTotal)}`;
+      seg.append(name, row);
+      bar.append(seg);
+    }
+    $("summary").textContent = `${plural(files.size, "file")} · ${plural(count, "test")}${failed ? ` · ${failed} failed` : ""}`;
+    $("total").textContent = `total ${fmt(total)}`;
+  }
+
+  function renderSidebar(q) {
+    const aside = $("tests");
+    aside.replaceChildren();
+    for (const [file, tests] of files) {
+      const box = el("details", "file");
+      box.open = true;
+      const head = el("summary");
+      head.append(el("span", "file-name", file), el("span", "dur", fmt(sum(tests))));
+      box.append(head);
+      for (const t of tests) {
+        const button = el("button", `test-btn${matches(t, q) ? "" : " nomatch"}`);
+        button.append(icon(t.status), el("span", "test-name", t.test), el("span", "dur", fmt(t.duration)));
+        button.title = t.test;
+        button.setAttribute("aria-current", String(t === selected));
+        button.addEventListener("click", () => select(t));
+        box.append(button);
+      }
+      aside.append(box);
+    }
+  }
+
+  /** Renders the selected test's file; returns the selected test's section to scroll to. */
+  function renderMain(q) {
+    const main = $("list");
+    main.replaceChildren();
+    if (!selected) return null;
+    const tests = files.get(selected.file);
+    const title = el("h2", "file-title");
+    title.append(el("span", "file-name", selected.file), el("span", "dur", `${plural(tests.length, "test")} · ${fmt(sum(tests))}`));
+    main.append(title);
+    let shown = 0, all = 0, target = null;
+    for (const t of tests) {
+      const rows = renderRows(t.entries, q);
+      all += t.entries.length;
+      shown += rows.length;
+      if (q && !rows.length && !t.test.toLowerCase().includes(q) && t !== selected) continue;
+      const section = el("section", `test${t === selected ? " selected" : ""}`);
+      const head = el("h3");
+      head.append(icon(t.status), el("span", "test-name", t.test), el("span", "dur", fmt(t.duration)));
+      section.append(head, ...rows);
+      if (!t.entries.length) section.append(el("p", "empty", "no transport events"));
+      main.append(section);
+      if (t === selected) target = section;
+    }
+    $("count").textContent = `${shown} / ${all} events`;
+    return target;
+  }
+
+  function renderRows(entries, q) {
+    const rows = [];
+    entries.forEach((e, i) => {
+      if (q && !JSON.stringify(e).toLowerCase().includes(q)) return;
+      const row = el("details", `row ${e.kind}`);
+      const summary = el("summary");
+      summary.append(
+        el("span", "at", `${e.at.toFixed(1)}ms`),
+        el("span", "delta", i ? `+${(e.at - entries[i - 1].at).toFixed(1)}` : ""),
+        el("span", "dir", e.kind === "dispatch" ? "←" : "→"),
+        el("span", "label", label(e)),
+        el("span", `status${e.status >= 400 ? " err" : ""}`, e.kind === "request" ? String(e.status) : ""),
+      );
+      const pre = el("pre");
+      // render JSON lazily: GUILD_CREATE payloads are big
+      row.addEventListener("toggle", () => { if (row.open && !pre.textContent) pre.textContent = JSON.stringify(detail(e), null, 2); });
+      row.append(summary, pre);
+      rows.push(row);
+    });
+    return rows;
+  }
+
+  function render() {
+    const q = $("filter").value.toLowerCase();
+    renderOverview();
+    renderSidebar(q);
+    return renderMain(q);
+  }
+
+  function select(test) {
+    selected = test;
+    render()?.scrollIntoView({ block: "start" });
+  }
+
+  async function load(fileList) {
+    const next = new Map();
+    for (const file of fileList) {
+      try {
+        for (const t of normalize(JSON.parse(await file.text()), file.name)) {
+          if (!next.has(t.file)) next.set(t.file, []);
+          next.get(t.file).push(t);
+        }
+      } catch (err) {
+        $("app").hidden = true;
+        $("drop").hidden = false;
+        $("drop").textContent = `Could not read ${file.name}: ${err.message}`;
+        return;
+      }
+    }
+    files = next;
+    const all = [...files.values()].flat();
+    $("drop").hidden = true;
+    $("app").hidden = false;
+    document.title = `${plural(all.length, "test")} – probe.ts Timeline`;
+    // start on the first failure, that's usually why the trace was opened
+    select(all.find((t) => t.status === "failed") ?? all[0] ?? null);
+  }
+
+  $("file").addEventListener("change", (ev) => ev.target.files.length && load(ev.target.files));
+  $("filter").addEventListener("input", render);
+  addEventListener("dragover", (ev) => { ev.preventDefault(); $("drop").classList.add("over"); });
+  addEventListener("dragleave", () => $("drop").classList.remove("over"));
+  addEventListener("drop", (ev) => { ev.preventDefault(); $("drop").classList.remove("over"); ev.dataTransfer.files.length && load(ev.dataTransfer.files); });
+</script>
+</body>
+</html>

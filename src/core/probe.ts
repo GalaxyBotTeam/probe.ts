@@ -15,6 +15,7 @@ import { parseModal, parseReply, type ModalContent, type ReplyContent } from "..
 import { createSlashCommandInvocation, type SlashCommandInvocation } from "../interactions/slash-command.js";
 import { GatewayAdapter } from "../transport/gateway-adapter.js";
 import { type CapturedRequest, RestAdapter, type RestResponder } from "../transport/rest-adapter.js";
+import { Timeline, type TimelineEntry } from "./timeline.js";
 
 /** Waits until `condition()` becomes true, or throws after `timeoutMs` (default: 1000ms). */
 async function waitUntil(condition: () => boolean, timeoutMs = 1000): Promise<void> {
@@ -68,6 +69,17 @@ export interface Probe {
   emit<K extends GatewayEventName>(eventName: K, overrides?: GatewayEventOverrides[K]): void;
   /** All outgoing REST calls captured so far, in order. */
   capturedRequests(): readonly CapturedRequest[];
+  /**
+   * Everything that crossed the fake transport so far – injected gateway
+   * events and the bot's REST calls with probe.ts's answers – in order, with
+   * `at` in ms since `createProbe()`. For debugging a failing test.
+   */
+  timeline(): readonly TimelineEntry[];
+  /**
+   * Writes `timeline()` as JSON to `filePath` (folders are created), e.g. in
+   * an `afterEach` hook: `await probe.exportTimeline(\`traces/${name}.json\`)`.
+   */
+  exportTimeline(filePath: string): Promise<void>;
   /** Builds a slash command invocation (`.withOptions(...).invoke()`). Subcommands as in Discord: `"ticket close"`, `"ticket admin close"`. */
   slashCommand(name: string): SlashCommandInvocation;
   /**
@@ -104,14 +116,15 @@ export interface Probe {
  * bot code itself stays unchanged and gets real discord.js objects.
  */
 export function createProbe(client: Client): Probe {
-  const rest = new RestAdapter();
+  const timeline = new Timeline();
+  const rest = new RestAdapter(timeline.record);
   client.rest = new REST({ ...client.options.rest, makeRequest: rest.makeRequest });
 
   let gateway: GatewayAdapter | undefined;
   client.options.ws = {
     ...client.options.ws,
     buildStrategy: (manager) => {
-      gateway = new GatewayAdapter(manager);
+      gateway = new GatewayAdapter(manager, timeline.record);
       return gateway;
     },
   };
@@ -187,6 +200,12 @@ export function createProbe(client: Client): Probe {
     },
     capturedRequests() {
       return rest.requests;
+    },
+    timeline() {
+      return timeline.entries;
+    },
+    exportTimeline(filePath) {
+      return timeline.export(filePath);
     },
     slashCommand(name) {
       return createSlashCommandInvocation(name, injectInteraction, waitForNextRequest);
