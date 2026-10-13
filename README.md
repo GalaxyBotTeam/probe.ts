@@ -108,6 +108,8 @@ afterEach(async (ctx) => {
 });
 ```
 
+To browse a trace, open [`tools/timeline-viewer.html`](tools/timeline-viewer.html) in a browser and drop the file in. It also reads several tests in one file as `[{ test, entries, failed? }]` — one collapsible group per test, failed ones open.
+
 ## How It Works
 
 probe.ts fakes exactly two boundaries — everything else is real discord.js:

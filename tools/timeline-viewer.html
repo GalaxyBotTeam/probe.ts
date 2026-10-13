@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>probe.ts Timeline</title>
+<style>
+  :root { --bg: #fff; --fg: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea; --hover: #f5f5f7; --in: #2f6fde; --out: #1f9d55; --warn: #c2410c; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #e8e8ed; --muted: #8e8e93; --line: #2c2c2e; --hover: #1f1f22; --in: #6ea0ff; --out: #4ad08a; --warn: #fb923c; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+  header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  h1 { font-size: 15px; margin: 0; }
+  input[type=search] { flex: 1; min-width: 160px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+  #drop { margin: 40px 16px; padding: 48px 16px; border: 2px dashed var(--line); border-radius: 12px; text-align: center; color: var(--muted); }
+  #drop.over { border-color: var(--in); color: var(--fg); }
+  .row { border-bottom: 1px solid var(--line); }
+  .row > summary { display: grid; grid-template-columns: 70px 60px 20px 1fr auto; gap: 8px; padding: 6px 16px; cursor: pointer; list-style: none; font-family: ui-monospace, monospace; font-size: 13px; }
+  .row > summary::-webkit-details-marker { display: none; }
+  .row > summary:hover { background: var(--hover); }
+  .at, .delta { color: var(--muted); text-align: right; }
+  .dispatch .dir { color: var(--in); } .request .dir { color: var(--out); }
+  .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status { color: var(--muted); } .status.err { color: var(--warn); }
+  pre { margin: 0; padding: 8px 16px 12px 174px; overflow-x: auto; font-size: 12px; color: var(--muted); }
+  .group > summary { padding: 10px 16px; cursor: pointer; font-weight: 600; border-bottom: 1px solid var(--line); background: var(--hover); }
+  .group.failed > summary { color: var(--warn); }
+  .group > summary .status { font-weight: 400; margin-left: 8px; }
+  @media (max-width: 600px) { .row > summary { grid-template-columns: 56px 20px 1fr auto; } .delta { display: none; } pre { padding-left: 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>probe.ts Timeline</h1>
+  <input type="search" id="filter" placeholder="Filter (event, method, url, body …)" aria-label="Filter">
+  <input type="file" id="file" accept=".json,application/json" aria-label="Open timeline JSON">
+  <span id="count" class="status"></span>
+</header>
+<div id="drop">Drop a timeline JSON from <code>probe.exportTimeline()</code> here, or pick a file above.</div>
+<main id="list"></main>
+<script>
+  const list = document.getElementById("list");
+  const drop = document.getElementById("drop");
+  const filter = document.getElementById("filter");
+  const count = document.getElementById("count");
+  /** `{ test, entries, failed? }[]` – a flat entry array (one `probe.exportTimeline()`) becomes one group without a title. */
+  let groups = [];
+
+  const label = (e) => e.kind === "dispatch" ? e.event : `${e.method} ${new URL(e.url).pathname.replace(/^\/api\/v\d+/, "")}`;
+  const detail = (e) => e.kind === "dispatch" ? { data: e.data } : { body: e.body, response: e.response };
+
+  function toGroups(data) {
+    if (!Array.isArray(data)) throw new Error("expected a JSON array");
+    if (data.every((g) => Array.isArray(g?.entries))) return data;
+    if (data.every((e) => e?.kind === "dispatch" || e?.kind === "request")) return [{ test: null, entries: data }];
+    throw new Error("expected timeline entries or { test, entries } groups");
+  }
+
+  function render() {
+    const q = filter.value.toLowerCase();
+    list.replaceChildren();
+    let shown = 0;
+    let total = 0;
+    for (const group of groups) {
+      total += group.entries.length;
+      const rows = renderRows(group.entries, q);
+      shown += rows.length;
+      if (group.test === null) { list.append(...rows); continue; }
+      if (q && !rows.length) continue;
+      const box = document.createElement("details");
+      box.className = `group${group.failed ? " failed" : ""}`;
+      // a filter opens matching groups; without one only failed tests start open
+      box.open = Boolean(q) || Boolean(group.failed);
+      const summary = document.createElement("summary");
+      const meta = document.createElement("span");
+      meta.className = "status";
+      meta.textContent = `${group.failed ? "failed · " : ""}${rows.length} entries`;
+      summary.append(String(group.test), meta);
+      box.append(summary, ...rows);
+      list.append(box);
+    }
+    count.textContent = `${shown} / ${total}`;
+  }
+
+  function renderRows(entries, q) {
+    const rows = [];
+    entries.forEach((e, i) => {
+      if (q && !JSON.stringify(e).toLowerCase().includes(q)) return;
+      const row = document.createElement("details");
+      row.className = `row ${e.kind}`;
+      const summary = document.createElement("summary");
+      const cells = [
+        ["at", `${e.at.toFixed(1)}ms`],
+        ["delta", i ? `+${(e.at - entries[i - 1].at).toFixed(1)}` : ""],
+        ["dir", e.kind === "dispatch" ? "←" : "→"],
+        ["label", label(e)],
+        [`status${e.status >= 400 ? " err" : ""}`, e.kind === "request" ? String(e.status) : ""],
+      ];
+      for (const [cls, text] of cells) {
+        const span = document.createElement("span");
+        span.className = cls;
+        span.textContent = text;
+        summary.append(span);
+      }
+      const pre = document.createElement("pre");
+      // render JSON lazily: GUILD_CREATE payloads are big
+      row.addEventListener("toggle", () => { if (row.open && !pre.textContent) pre.textContent = JSON.stringify(detail(e), null, 2); });
+      row.append(summary, pre);
+      rows.push(row);
+    });
+    return rows;
+  }
+
+  async function load(file) {
+    try {
+      groups = toGroups(JSON.parse(await file.text()));
+      drop.hidden = true;
+      document.title = `${file.name} – probe.ts Timeline`;
+      render();
+    } catch (err) {
+      drop.hidden = false;
+      drop.textContent = `Could not read ${file.name}: ${err.message}`;
+    }
+  }
+
+  document.getElementById("file").addEventListener("change", (ev) => ev.target.files[0] && load(ev.target.files[0]));
+  filter.addEventListener("input", render);
+  addEventListener("dragover", (ev) => { ev.preventDefault(); drop.classList.add("over"); });
+  addEventListener("dragleave", () => drop.classList.remove("over"));
+  addEventListener("drop", (ev) => { ev.preventDefault(); drop.classList.remove("over"); ev.dataTransfer.files[0] && load(ev.dataTransfer.files[0]); });
+</script>
+</body>
+</html>
