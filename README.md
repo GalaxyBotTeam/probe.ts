@@ -108,7 +108,7 @@ afterEach(async (ctx) => {
 });
 ```
 
-To browse a trace, open [`tools/timeline-viewer.html`](tools/timeline-viewer.html) in a browser and drop the file in. It also reads several tests in one file as `[{ test, entries, failed? }]` — one collapsible group per test, failed ones open.
+To browse traces, open [`tools/timeline-viewer.html`](tools/timeline-viewer.html) in a browser and drop one or more files in. Besides a single `exportTimeline()` file it reads whole test files as `[{ file, test, status, duration, entries }]` (`status`: `passed`/`failed`/`skipped`; `file` defaults to the JSON's name, `duration` to the span of `entries`). It shows a run overview, tests grouped by file with status and duration, and each file's timeline. Several such files can be merged into one by concatenating their arrays.
 
 ## How It Works
 
