@@ -49,9 +49,9 @@ raw gateway payloads – users never write JSON by hand.
 ## Tech stack
 
 - **Language:** TypeScript (strict mode + `noUncheckedIndexedAccess` +
-  `exactOptionalPropertyTypes`, see `.claude/rules/typescript-conventions.md`)
+  `exactOptionalPropertyTypes`, see `tsconfig.json`)
 - **Target library:** discord.js v14+ (`peerDependency` – the host brings
-  its own, see `.claude/rules/dependency-management.md`)
+  its own; `discord-api-types` likewise)
 - **Test runner:** Vitest (probe.ts integrates, doesn't replace it)
 - **Package manager:** npm (`package-lock.json` is the real lockfile)
 - **License:** MIT
@@ -112,7 +112,7 @@ A new interaction/event kind (e.g. autocomplete, threads) usually needs
    `probe.slashCommand()`/`button()`) – difference + patterns in the
    respective `README.md`
 3. The fake WS layer itself (`src/transport/gateway-adapter.ts`) almost never
-   needs to be touched for this – see the `transport-boundary-check` skill
+   needs to be touched for this – see `src/transport/README.md`
 
 ## Commands
 
@@ -124,8 +124,8 @@ npm run build     # create build
 npm run lint      # linting
 ```
 
-Before every "works"/"done" claim: `verify` skill (all four commands, in
-order) – Vitest alone doesn't typecheck.
+Before every "works"/"done" claim: run `typecheck`, `test`, `lint` and
+`build` – Vitest alone doesn't typecheck.
 
 ## Definition of done
 

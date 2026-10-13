@@ -39,8 +39,8 @@ Two methods:
 - `injectReady(data)` – brings shard 0 up (`Ready` event + dispatch
   `{t: 'READY'}`). Only needed for the `setup()` handshake.
 - `injectDispatch(payload)` – the generic case. Enough for practically every
-  new event: only a new test payload needed, no new method (see the
-  `build-gateway-payload` skill).
+  new event: only a new test payload needed, no new method (see
+  `../fixtures/README.md`).
 
 ## `rest-adapter.ts` – outgoing
 
@@ -64,8 +64,7 @@ answers it without network:
 New interaction/event kind (buttons, modals, prefix commands, reactions,
 ...)? Almost always a new raw test payload is enough – **no** adapter change
 needed. A new adapter method is only justified if the event needs a
-multi-step dance like `injectReady`. Details + checklist:
-`.claude/skills/transport-boundary-check/SKILL.md`.
+multi-step dance like `injectReady`.
 
 ## The one rule
 

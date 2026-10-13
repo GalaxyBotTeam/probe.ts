@@ -35,7 +35,7 @@ await vi.waitFor(() => {
 `emit()` is **synchronous**, just like `injectDispatch()` – it injects the
 event and returns right away. If the bot reacts asynchronously (e.g. via
 `interaction.reply()` or `channel.send()`), wait as usual with
-`vi.waitFor(...)` (see `.claude/rules/test-conventions.md`).
+`vi.waitFor(...)`.
 
 Unlike `slashCommand().invoke()`, there's no `lastReply()` here – that's
 built for interaction replies only (callback/`editReply`). A
@@ -105,8 +105,8 @@ handler, that REST call also shows up in `probe.capturedRequests()` – so for
 
 ## Custom events
 
-Missing an event? Add new fixture builders in `src/fixtures/` (see the
-`build-gateway-payload` skill) and wire them up in
+Missing an event? Add new fixture builders in `src/fixtures/` (see
+`src/fixtures/README.md`) and wire them up in
 `src/events/gateway-event.ts` – the fake WS layer itself
 (`src/transport/gateway-adapter.ts`) usually does **not** need to be touched
 for this.
