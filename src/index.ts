@@ -1,4 +1,5 @@
 export { createProbe, type Probe } from "./core/probe.js";
+export type { TimelineEntry, TimelineEvent } from "./core/timeline.js";
 export type { GatewayEventName, GatewayEventOverrides } from "./events/gateway-event.js";
 export type { CapturedRequest, RestResponder, RestResponderContext } from "./transport/rest-adapter.js";
 export type { SlashCommandInvocation } from "./interactions/slash-command.js";

@@ -1,6 +1,7 @@
 import type { RESTOptions, ResponseLike } from "@discordjs/rest";
 import { DEFAULT_IDS, snowflake } from "../fixtures/ids.js";
 import { buildMessage } from "../fixtures/message.js";
+import type { TimelineEvent } from "../core/timeline.js";
 
 /** Copied from `RESTOptions.makeRequest` to take over the exact undici `RequestInit` type. */
 type MakeRequest = RESTOptions["makeRequest"];
@@ -78,6 +79,8 @@ const emptyResponse: ResponseLike = {
 export class RestAdapter {
   readonly requests: CapturedRequest[] = [];
 
+  constructor(private readonly record: (event: TimelineEvent) => void) {}
+
   /** Id of the message the bot created last – default `messageId` for `probe.button()`/`selectMenu()`. */
   lastMessageId: string | undefined;
 
@@ -120,8 +123,12 @@ export class RestAdapter {
       const match = route.method === request.method ? path.match(route.path) : null;
       if (!match) continue;
       const data = route.respond({ match, request });
-      if (data !== undefined) return jsonResponse(200, data);
+      if (data !== undefined) {
+        this.record({ kind: "request", ...request, status: 200, response: data });
+        return jsonResponse(200, data);
+      }
     }
+    this.record({ kind: "request", ...request, status: 204, response: null });
     return emptyResponse;
   };
 

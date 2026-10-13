@@ -13,6 +13,7 @@ import {
   type GatewayReadyDispatchData,
   type GatewaySendPayload,
 } from "discord-api-types/v10";
+import type { TimelineEvent } from "../core/timeline.js";
 
 /**
  * Fake `IShardingStrategy` – replaces `@discordjs/ws`'s real sharding layer.
@@ -31,7 +32,10 @@ export class GatewayAdapter implements IShardingStrategy {
   /** Outgoing gateway payloads (heartbeat, identify, ...) the bot wanted to "send". */
   readonly sentPayloads: { shardId: number; payload: GatewaySendPayload }[] = [];
 
-  constructor(private readonly manager: WebSocketManager) {}
+  constructor(
+    private readonly manager: WebSocketManager,
+    private readonly record: (event: TimelineEvent) => void,
+  ) {}
 
   connect(): void {
     // no-op: no real socket to open
@@ -68,6 +72,7 @@ export class GatewayAdapter implements IShardingStrategy {
 
   /** Injects a raw gateway dispatch event (e.g. `INTERACTION_CREATE`). */
   injectDispatch(payload: GatewayDispatchPayload): void {
+    this.record({ kind: "dispatch", event: payload.t, data: payload.d });
     this.manager.emit(WebSocketShardEvents.Dispatch, { data: payload, shardId: 0 });
   }
 }

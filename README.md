@@ -19,6 +19,7 @@ probe.ts solves this at the transport layer instead: it fakes only the two bound
 - Test **Buttons**, **Select Menus**, and **Modals** — including discord.js's own collectors (`awaitMessageComponent()`, `awaitModalSubmit()`, ...)
 - Test **Gateway Events** — member join/leave, message create/delete, reactions, prefix commands
 - Evaluate **Components V2 containers** with `extractText()` — no manual tree-walking
+- Export a **timeline** of every gateway event and REST call per test with `probe.exportTimeline()`
 - **Seamless integration** with discord.js — real model objects, no hand-written mocks
 - **Vitest-native** — no separate test runner or assertion library to learn
 - Fixture builders with sensible defaults, everything overridable
@@ -97,6 +98,16 @@ expect(probe.lastModal()).toMatchObject({ customId: "feedback-modal" });
 
 Works with discord.js's own collectors too. Full guide: [`docs/testing-message-components.md`](docs/testing-message-components.md).
 
+## Debugging with the Timeline
+
+`probe.timeline()` lists everything that crossed the fake transport — injected gateway events and the bot's REST calls with probe.ts's answers — in order, each with `at` (ms since `createProbe()`). Export it after each test to see what happened when one fails:
+
+```ts
+afterEach(async (ctx) => {
+  await probe.exportTimeline(`traces/${ctx.task.name}.json`);
+});
+```
+
 ## How It Works
 
 probe.ts fakes exactly two boundaries — everything else is real discord.js:
@@ -136,7 +147,7 @@ probe.ts works with discord.js v14+. You can integrate it without modifying your
 
 ## Current Status
 
-**Implemented:** Slash Commands (incl. user options and subcommands/groups), Buttons/Select Menus (string-select)/Modals with collectors, per-interaction user/guild/channel via `withContext()`, real `Message` responses for `channel.send()`/`followUp()`/`editReply()` plus custom REST responses via `probe.respond()`, the gateway events listed above, Components V2 container evaluation.
+**Implemented:** Slash Commands (incl. user options and subcommands/groups), Buttons/Select Menus (string-select)/Modals with collectors, per-interaction user/guild/channel via `withContext()`, real `Message` responses for `channel.send()`/`followUp()`/`editReply()` plus custom REST responses via `probe.respond()`, the gateway events listed above, Components V2 container evaluation, a per-probe timeline via `probe.timeline()`/`exportTimeline()`.
 
 **Not yet supported:** custom Vitest matchers, other select-menu types (user/role/mentionable/channel), a `Message` from `interaction.reply({ withResponse: true })`, `followUp()` in `lastReply()`/`allReplies()` (it only shows up in `capturedRequests()`), embed snapshot testing, timer control for collectors, permission/role simulation.
 
