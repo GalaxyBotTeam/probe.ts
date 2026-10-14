@@ -12,13 +12,15 @@ export interface CapturedRequest {
   url: string;
   /** JSON-parsed body, if present (discord.js sends REST bodies as JSON). */
   body: unknown;
+  /** Status probe.ts answered with – 4xx/5xx for a `restError()`, otherwise 200/204. */
+  status: number;
 }
 
 /** What a responder learns about the call it answers. */
 export interface RestResponderContext {
   /** Match of the path pattern – capture groups are e.g. a channel or guild id. */
   match: RegExpMatchArray;
-  request: CapturedRequest;
+  request: Omit<CapturedRequest, "status">;
 }
 
 /**
@@ -135,12 +137,15 @@ export class RestAdapter {
       return jsonResponse(200, this.gatewayBotInfo);
     }
 
-    const request: CapturedRequest = {
+    const request = {
       method: init.method ?? "GET",
       url,
       body: typeof init.body === "string" ? JSON.parse(init.body) : null,
     };
-    this.requests.push(request);
+    const answer = (status: number, response: unknown): void => {
+      this.requests.push({ ...request, status });
+      this.record({ kind: "request", ...request, status, response });
+    };
 
     const path = new URL(url).pathname;
     for (const route of this.routes) {
@@ -148,15 +153,15 @@ export class RestAdapter {
       if (!match) continue;
       const data = route.respond({ match, request });
       if (data instanceof RestErrorResponse) {
-        this.record({ kind: "request", ...request, status: data.status, response: data.body });
+        answer(data.status, data.body);
         return jsonResponse(data.status, data.body, { ...data.headers });
       }
       if (data !== undefined) {
-        this.record({ kind: "request", ...request, status: 200, response: data });
+        answer(200, data);
         return jsonResponse(200, data);
       }
     }
-    this.record({ kind: "request", ...request, status: 204, response: null });
+    answer(204, null);
     return emptyResponse;
   };
 

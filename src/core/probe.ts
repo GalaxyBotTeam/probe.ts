@@ -104,9 +104,9 @@ export interface Probe {
   respond(method: string, path: RegExp, responder: RestResponder): void;
   /** Builds a modal submit (`.withFields({...}).submit()`). */
   modal(customId: string): ModalSubmitInvocation;
-  /** The content of the reply sent last (`reply`/`editReply`), or `undefined` if none came yet. */
+  /** The content of the reply sent last (`reply`/`editReply`), or `undefined` if none came yet. Replies that failed via `restError()` don't count. */
   lastReply(): ReplyContent | undefined;
-  /** The contents of all replies sent so far, in order. */
+  /** The contents of all replies sent so far, in order – without the ones that failed via `restError()`. */
   allReplies(): ReplyContent[];
   /** The modal shown last via `interaction.showModal(...)`, or `undefined` if none came yet. */
   lastModal(): ModalContent | undefined;
@@ -143,12 +143,17 @@ export function createProbe(client: Client): Probe {
     return gateway;
   }
 
+  /** Calls Discord accepted – a reply/modal that failed via `restError()` never reached the user. */
+  function succeededRequests(): CapturedRequest[] {
+    return rest.requests.filter((request) => request.status < 400);
+  }
+
   function allReplies(): ReplyContent[] {
-    return rest.requests.map(parseReply).filter((reply): reply is ReplyContent => reply !== undefined);
+    return succeededRequests().map(parseReply).filter((reply): reply is ReplyContent => reply !== undefined);
   }
 
   function allModals(): ModalContent[] {
-    return rest.requests.map(parseModal).filter((modal): modal is ModalContent => modal !== undefined);
+    return succeededRequests().map(parseModal).filter((modal): modal is ModalContent => modal !== undefined);
   }
 
   /** Waits for at least one new REST call – shared base of every fluent invocation (slash command, button, select menu, modal). */

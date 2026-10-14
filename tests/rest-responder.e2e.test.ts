@@ -108,6 +108,31 @@ describe("REST responses", () => {
     await probe.teardown();
   });
 
+  it("restError(): a reply that failed doesn't count as a reply", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.channel?.isSendable()) return;
+      try {
+        await interaction.reply("hi");
+      } catch {
+        await interaction.channel.send("the interaction expired");
+      }
+    });
+    const probe = createProbe(client);
+    probe.respond("POST", /\/interactions\/.*\/callback$/, () => restError(404, { code: 10062, message: "Unknown interaction" }));
+    await probe.setup();
+
+    await probe.slashCommand("hi").invoke();
+
+    await vi.waitFor(() => {
+      expect(probe.capturedRequests()).toHaveLength(2);
+    });
+    expect(probe.capturedRequests()[0]).toMatchObject({ status: 404 });
+    expect(probe.lastReply()).toBeUndefined();
+
+    await probe.teardown();
+  });
+
   it("restError(): a one-time 429 makes discord.js wait for Retry-After and send the call again", async () => {
     const client = new Client({ intents: [GatewayIntentBits.Guilds] });
     const statuses: number[] = [];
