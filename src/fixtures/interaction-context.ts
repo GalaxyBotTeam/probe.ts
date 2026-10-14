@@ -26,7 +26,8 @@ export interface InteractionContextOverrides {
    * Runs the interaction in the user's DM with the bot instead of a guild –
    * like on Discord, it then carries `user` instead of `guild`/`member`
    * (both overrides are ignored) and a DM channel
-   * (default id `DEFAULT_IDS.dmChannel`).
+   * (default id `DEFAULT_IDS.dmChannel`). discord.js only builds
+   * `interaction.channel` for it with `Partials.Channel` on the client.
    */
   dm?: boolean;
 }

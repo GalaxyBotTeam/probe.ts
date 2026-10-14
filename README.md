@@ -123,6 +123,8 @@ await probe.button("rate-5").withContext({ dm: true, user: { id: "42" } }).click
 
 Roles must exist in the guild for `member.roles.cache` to list them — seed them first with `probe.injectDispatch(buildGuildCreateDispatch({ roles: [{ id: modRoleId }] }))`.
 
+In a DM, `interaction.channel` is only set when the client has `partials: [Partials.Channel]` — like on Discord, which sends no DM channel ahead of the interaction. Without it, `interaction.channelId` still holds the DM channel's id.
+
 ## Testing Discord Errors
 
 ```ts

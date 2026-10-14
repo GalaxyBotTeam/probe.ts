@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, type Interaction } from "discord.js";
+import { ChannelType, Client, GatewayIntentBits, Partials, type Interaction } from "discord.js";
 import { describe, expect, it } from "vitest";
 import { buildGuildCreateDispatch, createProbe, DEFAULT_IDS } from "../src/index.js";
 
@@ -40,6 +40,24 @@ describe("Interaction context and options", () => {
     expect(probe.lastReply()?.content).toBe(`guild ${DEFAULT_IDS.guild} from ${DEFAULT_IDS.user}`);
 
     await probe.teardown();
+  });
+
+  it("withContext({ dm: true }): interaction.channel needs Partials.Channel, like on Discord", async () => {
+    const channelOf = async (partials: Partials[]): Promise<string> => {
+      const client = new Client({ intents: [GatewayIntentBits.Guilds], partials });
+      client.on("interactionCreate", async (interaction) => {
+        if (!interaction.isChatInputCommand()) return;
+        await interaction.reply(interaction.channel ? `${interaction.channel.type} ${interaction.channel.id}` : "none");
+      });
+      const probe = createProbe(client);
+      await probe.setup();
+      await probe.slashCommand("where").withContext({ dm: true }).invoke();
+      await probe.teardown();
+      return String(probe.lastReply()?.content);
+    };
+
+    expect(await channelOf([])).toBe("none");
+    expect(await channelOf([Partials.Channel])).toBe(`${ChannelType.DM} ${DEFAULT_IDS.dmChannel}`);
   });
 
   it("withOptions(): `{ integer }` is an integer option, a plain number a number option", async () => {

@@ -79,7 +79,9 @@ All five:
   `.withContext({ user, member, guild, channel })` (default: `DEFAULT_IDS`),
   e.g. `probe.button("ok").withContext({ user: { id: adminId } }).click()` –
   or `.withContext({ dm: true, user })` for the user's DM with the bot
-  (`user` instead of `guild`/`member`, DM channel `DEFAULT_IDS.dmChannel`)
+  (`user` instead of `guild`/`member`, DM channel `DEFAULT_IDS.dmChannel`;
+  `interaction.channel` needs `Partials.Channel` on the client, like for
+  real bots)
 - invisibly inject the interaction's guild and channel first, except in a DM (see
   `buildGuildCreateDispatch`) so `interaction.channel`/`interaction.guild`
   resolve for real – the same hidden discord.js rule as for gateway events

@@ -180,7 +180,7 @@ export function createProbe(client: Client): Probe {
   function injectInteraction(dispatch: GatewayInteractionCreateDispatch): void {
     const gateway = requireGateway();
     const { guild_id: guildId, channel } = dispatch.d;
-    // a DM has no guild to seed – discord.js resolves the DM channel from the interaction itself
+    // a DM has no guild to seed – like on Discord, `interaction.channel` then needs `Partials.Channel`
     if (guildId) {
       gateway.injectDispatch(
         buildGuildCreateDispatch({ id: guildId, ...(channel ? { channel: { id: channel.id, type: channel.type } } : {}) }),
