@@ -108,6 +108,8 @@ await probe.contextMenu("Report").withContext({ user: { id: "7" } }).onMessage({
 
 `interaction.targetUser`/`targetMember`/`targetMessage` are real discord.js objects. The second argument of `onUser()` sets what Discord sends for the target's guild member (e.g. `roles`).
 
+Complete example with a DM check and a Discord error: [`examples/report-bot/bot.ts`](examples/report-bot/bot.ts) + [`tests/report-bot.e2e.test.ts`](tests/report-bot.e2e.test.ts).
+
 ## Options, Members and DMs
 
 ```ts
