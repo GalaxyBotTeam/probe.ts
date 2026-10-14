@@ -114,7 +114,7 @@ recursively from `Container`/`Section`). See
 ## Adding a new interaction kind
 
 1. Fixture builder in `../fixtures/` (see its `README.md` – reuse
-   `buildInteractionContext` as the foundation).
+   `buildInteractionBase` as the foundation).
 2. Fluent invocation here: `create<Name>Invocation(customId, inject, waitForReply)`
    following the pattern above (message components additionally get a
    `defaultMessageId` getter) – it gets `inject`/`waitForReply` injected by

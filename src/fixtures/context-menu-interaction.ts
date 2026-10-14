@@ -1,17 +1,14 @@
 import {
   ApplicationCommandType,
-  GatewayDispatchEvents,
-  GatewayOpcodes,
   InteractionType,
-  Locale,
   type APIInteractionDataResolvedGuildMember,
   type APIMessageApplicationCommandInteraction,
   type APIUser,
   type APIUserApplicationCommandInteraction,
   type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
-import { DEFAULT_IDS, snowflake } from "./ids.js";
-import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
+import { DEFAULT_IDS } from "./ids.js";
+import { buildInteractionBase, buildInteractionCreateDispatch, type InteractionContextOverrides } from "./interaction-context.js";
 import { buildMember } from "./member.js";
 import { buildMessage, type MessageOverrides } from "./message.js";
 import { buildUser } from "./user.js";
@@ -35,27 +32,13 @@ export interface MessageContextMenuOverrides extends InteractionContextOverrides
 
 /** The fields every context menu interaction shares with a slash command – only `data` differs. */
 function baseInteraction(overrides: InteractionContextOverrides) {
-  const { channel, origin } = buildInteractionContext(overrides);
+  const base = buildInteractionBase(overrides);
   return {
-    id: snowflake(),
-    application_id: DEFAULT_IDS.application,
+    ...base,
     type: InteractionType.ApplicationCommand as const,
-    token: "interaction-token",
-    version: 1 as const,
-    locale: Locale.EnglishUS,
-    app_permissions: "0",
-    entitlements: [],
-    authorizing_integration_owners: {},
-    attachment_size_limit: 26_214_400,
-    channel_id: channel.id,
-    // same generic channel fixture as in `interaction.ts` – see the cast there
-    channel: channel as APIUserApplicationCommandInteraction["channel"],
-    ...origin,
+    // see `buildInteractionBase` for the cast
+    channel: base.channel as APIUserApplicationCommandInteraction["channel"],
   };
-}
-
-function dispatch(d: GatewayInteractionCreateDispatch["d"]): GatewayInteractionCreateDispatch {
-  return { op: GatewayOpcodes.Dispatch, s: 1, t: GatewayDispatchEvents.InteractionCreate, d };
 }
 
 /**
@@ -74,7 +57,7 @@ export function buildUserContextMenuInteractionDispatch(
   const { roles, flags, joined_at, permissions } = buildMember();
   const member = { roles, flags, joined_at, permissions, ...overrides.targetMember };
 
-  return dispatch({
+  return buildInteractionCreateDispatch({
     ...base,
     data: {
       id: DEFAULT_IDS.command,
@@ -99,7 +82,7 @@ export function buildMessageContextMenuInteractionDispatch(
   const base = baseInteraction(overrides);
   const message = buildMessage({ ...overrides.target, channel: { id: base.channel_id, ...overrides.target?.channel } });
 
-  return dispatch({
+  return buildInteractionCreateDispatch({
     ...base,
     data: {
       id: DEFAULT_IDS.command,

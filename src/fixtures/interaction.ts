@@ -1,10 +1,7 @@
 import {
   ApplicationCommandOptionType,
   ApplicationCommandType,
-  GatewayDispatchEvents,
-  GatewayOpcodes,
   InteractionType,
-  Locale,
   type APIApplicationCommandInteractionDataBasicOption,
   type APIApplicationCommandInteractionDataOption,
   type APIChatInputApplicationCommandInteraction,
@@ -13,8 +10,8 @@ import {
   type APIUser,
   type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
-import { DEFAULT_IDS, snowflake } from "./ids.js";
-import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
+import { DEFAULT_IDS } from "./ids.js";
+import { buildInteractionBase, buildInteractionCreateDispatch, type InteractionContextOverrides } from "./interaction-context.js";
 import { buildMember } from "./member.js";
 import { buildUser } from "./user.js";
 
@@ -130,31 +127,18 @@ export function buildSlashCommandInteractionDispatch(
   name: string,
   overrides: SlashCommandInteractionOverrides = {},
 ): GatewayInteractionCreateDispatch {
-  const { channel, origin } = buildInteractionContext(overrides);
+  const base = buildInteractionBase(overrides);
   const [commandName = "", ...subcommandPath] = name.trim().split(/\s+/);
   if (subcommandPath.length > 2) {
     throw new Error(`probe.ts: "${name}" – Discord allows at most command, subcommand group and subcommand`);
   }
-  const { options, resolved } = toInteractionData(overrides.options ?? {}, "guild_id" in origin);
+  const { options, resolved } = toInteractionData(overrides.options ?? {}, "guild_id" in base);
 
-  const interaction = {
-    id: snowflake(),
-    application_id: DEFAULT_IDS.application,
+  return buildInteractionCreateDispatch({
+    ...base,
     type: InteractionType.ApplicationCommand,
-    token: "interaction-token",
-    version: 1,
-    locale: Locale.EnglishUS,
-    app_permissions: "0",
-    entitlements: [],
-    authorizing_integration_owners: {},
-    attachment_size_limit: 26_214_400,
-    channel_id: channel.id,
-    // discord-api-types splits APIChannel by `type` into ~10 concrete channel
-    // interfaces; our fixture deliberately stays generic (discord.js only
-    // needs id/type) – the cast is the only way to pass it through without a
-    // channel type parameter.
-    channel: channel as APIChatInputApplicationCommandInteraction["channel"],
-    ...origin,
+    // see `buildInteractionBase` for the cast
+    channel: base.channel as APIChatInputApplicationCommandInteraction["channel"],
     data: {
       id: DEFAULT_IDS.command,
       name: commandName,
@@ -162,12 +146,5 @@ export function buildSlashCommandInteractionDispatch(
       options: nestInSubcommand(subcommandPath, options),
       ...(resolved ? { resolved } : {}),
     },
-  } satisfies APIChatInputApplicationCommandInteraction;
-
-  return {
-    op: GatewayOpcodes.Dispatch,
-    s: 1,
-    t: GatewayDispatchEvents.InteractionCreate,
-    d: interaction,
-  };
+  } satisfies APIChatInputApplicationCommandInteraction);
 }

@@ -1,13 +1,17 @@
 import {
   ChannelType,
+  GatewayDispatchEvents,
+  GatewayOpcodes,
   InteractionContextType,
+  Locale,
   type APIInteractionGuildMember,
   type APIPartialInteractionGuild,
   type APIUser,
+  type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
 import { buildChannel, type ChannelFixture } from "./channel.js";
 import { buildGuild } from "./guild.js";
-import { DEFAULT_IDS } from "./ids.js";
+import { DEFAULT_IDS, snowflake } from "./ids.js";
 import { buildMember } from "./member.js";
 import { buildUser } from "./user.js";
 
@@ -65,4 +69,35 @@ export function buildInteractionContext(overrides: InteractionContextOverrides =
     ...(overrides.user ? { user: buildUser(overrides.user) } : {}),
   });
   return { channel, origin: { context: InteractionContextType.Guild, guild_id: guild.id, guild, member } };
+}
+
+/**
+ * The fields every interaction payload shares – each builder adds only
+ * `type`, `data` (plus `message` for components) and casts `channel` to its
+ * interaction's channel type. discord-api-types splits `APIChannel` by
+ * `type` into ~10 concrete channel interfaces; our fixture deliberately
+ * stays generic (discord.js only needs id/type), so the cast is the only way
+ * to pass it through without a channel type parameter.
+ */
+export function buildInteractionBase(overrides: InteractionContextOverrides = {}) {
+  const { channel, origin } = buildInteractionContext(overrides);
+  return {
+    id: snowflake(),
+    application_id: DEFAULT_IDS.application,
+    token: "interaction-token",
+    version: 1 as const,
+    locale: Locale.EnglishUS,
+    app_permissions: "0",
+    entitlements: [],
+    authorizing_integration_owners: {},
+    attachment_size_limit: 26_214_400,
+    channel_id: channel.id,
+    channel,
+    ...origin,
+  };
+}
+
+/** Wraps an interaction payload in a raw `INTERACTION_CREATE` gateway dispatch. */
+export function buildInteractionCreateDispatch(d: GatewayInteractionCreateDispatch["d"]): GatewayInteractionCreateDispatch {
+  return { op: GatewayOpcodes.Dispatch, s: 1, t: GatewayDispatchEvents.InteractionCreate, d };
 }

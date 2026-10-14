@@ -1,15 +1,11 @@
 import {
   ComponentType,
-  GatewayDispatchEvents,
-  GatewayOpcodes,
   InteractionType,
-  Locale,
   type APIChannel,
   type APIModalSubmitInteraction,
   type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
-import { DEFAULT_IDS, snowflake } from "./ids.js";
-import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
+import { buildInteractionBase, buildInteractionCreateDispatch, type InteractionContextOverrides } from "./interaction-context.js";
 
 /**
  * Fixture overrides for `buildModalSubmitInteractionDispatch`: who submits,
@@ -32,28 +28,18 @@ export function buildModalSubmitInteractionDispatch(
   customId: string,
   overrides: ModalSubmitOverrides = {},
 ): GatewayInteractionCreateDispatch {
-  const { channel, origin } = buildInteractionContext(overrides);
+  const base = buildInteractionBase(overrides);
   const fields = overrides.fields ?? {};
 
-  const interaction = {
-    id: snowflake(),
-    application_id: DEFAULT_IDS.application,
+  return buildInteractionCreateDispatch({
+    ...base,
     type: InteractionType.ModalSubmit,
-    token: "interaction-token",
-    version: 1,
-    locale: Locale.EnglishUS,
-    app_permissions: "0",
-    entitlements: [],
-    authorizing_integration_owners: {},
-    attachment_size_limit: 26_214_400,
-    channel_id: channel.id,
     // Unlike slash command/component interactions, `channel` is optional in
     // `APIModalSubmitInteraction` – set anyway here (realism,
     // `interaction.channel` works after the submit), hence the cast to the
     // concrete (non-optional) channel shape instead of the interaction's own
     // (optional) field type.
-    channel: channel as Partial<APIChannel> & Pick<APIChannel, "id" | "type">,
-    ...origin,
+    channel: base.channel as Partial<APIChannel> & Pick<APIChannel, "id" | "type">,
     data: {
       custom_id: customId,
       components: Object.entries(fields).map(([fieldCustomId, value]) => ({
@@ -61,12 +47,5 @@ export function buildModalSubmitInteractionDispatch(
         components: [{ type: ComponentType.TextInput as const, custom_id: fieldCustomId, value }],
       })),
     },
-  } satisfies APIModalSubmitInteraction;
-
-  return {
-    op: GatewayOpcodes.Dispatch,
-    s: 1,
-    t: GatewayDispatchEvents.InteractionCreate,
-    d: interaction,
-  };
+  } satisfies APIModalSubmitInteraction);
 }
