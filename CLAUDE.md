@@ -148,9 +148,8 @@ Before every "works"/"done" claim: run `typecheck`, `test`, `lint` and
   up raw in `probe.capturedRequests()`)
 - Snapshot testing for embeds, time/timer control for collectors,
   permission/role simulation
-- npm release + announcement in the GalaxyBot community are still pending –
-  `package.json` deliberately stays at `version: "0.0.0"`, the real version
-  is set dynamically by `.github/workflows/release.yml` from the GitHub
-  release tag
+
+`package.json` deliberately stays at `version: "0.0.0"`; the real version is
+set dynamically by `.github/workflows/release.yml` from the GitHub release tag.
 
 User-facing version of the same list: `README.md` (section "Current Status").
