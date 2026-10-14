@@ -32,7 +32,7 @@ export function buildModalSubmitInteractionDispatch(
   customId: string,
   overrides: ModalSubmitOverrides = {},
 ): GatewayInteractionCreateDispatch {
-  const { channel, guild, member } = buildInteractionContext(overrides);
+  const { channel, origin } = buildInteractionContext(overrides);
   const fields = overrides.fields ?? {};
 
   const interaction = {
@@ -53,9 +53,7 @@ export function buildModalSubmitInteractionDispatch(
     // concrete (non-optional) channel shape instead of the interaction's own
     // (optional) field type.
     channel: channel as Partial<APIChannel> & Pick<APIChannel, "id" | "type">,
-    guild_id: guild.id,
-    guild,
-    member,
+    ...origin,
     data: {
       custom_id: customId,
       components: Object.entries(fields).map(([fieldCustomId, value]) => ({

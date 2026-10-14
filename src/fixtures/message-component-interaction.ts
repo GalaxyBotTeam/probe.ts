@@ -24,12 +24,12 @@ export interface MessageComponentOverrides extends InteractionContextOverrides {
 }
 
 function buildComponentInteractionBase(overrides: MessageComponentOverrides) {
-  const { channel, guild, member } = buildInteractionContext(overrides);
+  const { channel, origin } = buildInteractionContext(overrides);
   const message = buildMessage({
     ...(overrides.messageId ? { id: overrides.messageId } : {}),
-    ...(overrides.channel ? { channel: overrides.channel } : {}),
+    channel: { id: channel.id },
   });
-  return { channel, guild, member, message };
+  return { channel, origin, message };
 }
 
 /**
@@ -40,7 +40,7 @@ export function buildButtonInteractionDispatch(
   customId: string,
   overrides: MessageComponentOverrides = {},
 ): GatewayInteractionCreateDispatch {
-  const { channel, guild, member, message } = buildComponentInteractionBase(overrides);
+  const { channel, origin, message } = buildComponentInteractionBase(overrides);
 
   const interaction = {
     id: snowflake(),
@@ -58,9 +58,7 @@ export function buildButtonInteractionDispatch(
     // ~10 concrete channel interfaces; our fixture deliberately stays generic
     // (discord.js only needs id/type).
     channel: channel as APIMessageComponentButtonInteraction["channel"],
-    guild_id: guild.id,
-    guild,
-    member,
+    ...origin,
     message,
     data: { custom_id: customId, component_type: ComponentType.Button },
   } satisfies APIMessageComponentButtonInteraction;
@@ -88,7 +86,7 @@ export function buildSelectMenuInteractionDispatch(
   values: string[],
   overrides: MessageComponentOverrides = {},
 ): GatewayInteractionCreateDispatch {
-  const { channel, guild, member, message } = buildComponentInteractionBase(overrides);
+  const { channel, origin, message } = buildComponentInteractionBase(overrides);
 
   const interaction = {
     id: snowflake(),
@@ -103,9 +101,7 @@ export function buildSelectMenuInteractionDispatch(
     attachment_size_limit: 26_214_400,
     channel_id: channel.id,
     channel: channel as APIMessageComponentSelectMenuInteraction["channel"],
-    guild_id: guild.id,
-    guild,
-    member,
+    ...origin,
     message,
     data: { custom_id: customId, component_type: ComponentType.StringSelect, values },
   } satisfies APIMessageComponentSelectMenuInteraction;

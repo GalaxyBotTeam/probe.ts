@@ -19,9 +19,10 @@ export { buildGuild } from "./fixtures/guild.js";
 export { buildChannel } from "./fixtures/channel.js";
 export { buildMember } from "./fixtures/member.js";
 export { buildMessage, type MessageOverrides } from "./fixtures/message.js";
-export type { InteractionContextOverrides } from "./fixtures/interaction-context.js";
+export type { InteractionContextOverrides, InteractionOrigin } from "./fixtures/interaction-context.js";
 export {
   buildSlashCommandInteractionDispatch,
+  type SlashCommandIntegerOptionValue,
   type SlashCommandInteractionOverrides,
   type SlashCommandOptionValues,
   type SlashCommandUserOptionValue,

@@ -140,6 +140,8 @@ Before every "works"/"done" claim: run `typecheck`, `test`, `lint` and
   currently only simple assertions on `lastReply()`/`allReplies()`/etc.
 - More select menu types (user/role/mentionable/channel select) – currently
   only string select (`src/fixtures/message-component-interaction.ts`)
+- More slash command option types (role/channel/mentionable/attachment) –
+  currently string/number/integer/boolean/user (`src/fixtures/interaction.ts`)
 - The fake REST layer doesn't return a `Message` for
   `interaction.reply({withResponse:true})` yet (`channel.send()`,
   `followUp()`, `editReply()` already do), see

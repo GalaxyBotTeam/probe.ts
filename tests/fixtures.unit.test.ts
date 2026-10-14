@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionType, ChannelType, InteractionType } from "discord-api-types/v10";
+import { ApplicationCommandOptionType, ChannelType, InteractionContextType, InteractionType } from "discord-api-types/v10";
 import { describe, expect, it } from "vitest";
 import { buildChannel } from "../src/fixtures/channel.js";
 import { buildGuild } from "../src/fixtures/guild.js";
@@ -44,6 +44,18 @@ describe("Fixture builders", () => {
         { name: "amount", type: ApplicationCommandOptionType.Number, value: 3 },
       ],
     });
+  });
+
+  it("buildSlashCommandInteractionDispatch: dm builds a DM interaction with user and DM channel", () => {
+    const interaction = buildSlashCommandInteractionDispatch("greet", { dm: true, user: { id: "42" }, guild: { id: "1" } }).d;
+    expect(interaction).toMatchObject({
+      context: InteractionContextType.BotDM,
+      user: { id: "42" },
+      channel_id: DEFAULT_IDS.dmChannel,
+      channel: { type: ChannelType.DM, recipients: [{ id: "42" }] },
+    });
+    expect(interaction).not.toHaveProperty("guild_id");
+    expect(interaction).not.toHaveProperty("member");
   });
 
   it("buildSlashCommandInteractionDispatch: nests options into subcommand group and subcommand", () => {

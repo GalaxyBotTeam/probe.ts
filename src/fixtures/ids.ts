@@ -21,6 +21,8 @@ export const DEFAULT_IDS = {
   command: "1100000000000000008",
   /** Owner of every seeded guild – deliberately not `user`, otherwise the default user would pass every permission check. */
   owner: "1100000000000000009",
+  /** The DM channel between the user and the bot – used by interactions with `dm: true`. */
+  dmChannel: "1100000000000000010",
 } as const;
 
 let sequence = 0n;

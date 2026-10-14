@@ -25,7 +25,7 @@ Every builder:
 | `channel.ts`                        | `buildChannel`                                                     | Minimal channel payload (`id`, `type`)    |
 | `member.ts`                         | `buildMember`                                                      | `APIInteractionGuildMember`               |
 | `message.ts`                        | `buildMessage`                                                     | `APIMessage`                              |
-| `interaction-context.ts`            | `buildInteractionContext`                                          | Channel/guild/member – foundation of every interaction |
+| `interaction-context.ts`            | `buildInteractionContext`                                          | Channel + origin (guild/member, or the DM user) – foundation of every interaction |
 | `interaction.ts`                    | `buildSlashCommandInteractionDispatch`                             | `INTERACTION_CREATE` (slash command, incl. subcommands) |
 | `message-component-interaction.ts`  | `buildButtonInteractionDispatch`, `buildSelectMenuInteractionDispatch` | `INTERACTION_CREATE` (button click, string select) |
 | `modal-interaction.ts`              | `buildModalSubmitInteractionDispatch`                              | `INTERACTION_CREATE` (modal submit)       |

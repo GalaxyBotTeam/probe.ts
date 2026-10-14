@@ -18,6 +18,13 @@ await probe.slashCommand("echo").withOptions({ message: "hello" }).invoke();
 // under `resolved`, `options.getUser()`/`getMember()` return real objects
 await probe.slashCommand("warn").withOptions({ member: { user: { username: "anna" } } }).invoke();
 
+// the member behind a user option: what Discord sends along (e.g. `roles`) –
+// discord.js caches it, so without `roles` the member has none
+await probe.slashCommand("warn").withOptions({ target: { user: { id: "42" }, member: { roles: [modRoleId] } } }).invoke();
+
+// a plain number is a number option (`getNumber()`), `{ integer }` an integer option (`getInteger()`)
+await probe.slashCommand("timeout").withOptions({ days: { integer: 3 } }).invoke();
+
 // subcommand (and group) separated by spaces like in Discord – the options
 // go into the subcommand, `options.getSubcommand()` works
 await probe.slashCommand("ticket close").withOptions({ reason: "done" }).invoke();
@@ -60,7 +67,7 @@ just injects the submit.
 `probe.contextMenu(name)` – the target decides the command type:
 
 ```ts
-await probe.contextMenu("Warn").onUser({ id: "42" });
+await probe.contextMenu("Warn").onUser({ id: "42" }, { roles: [modRoleId] }); // 2nd argument: the target's member
 await probe.contextMenu("Report").onMessage({ content: "spam" });
 ```
 
@@ -70,8 +77,10 @@ All five:
 
 - take who triggers the interaction where via
   `.withContext({ user, member, guild, channel })` (default: `DEFAULT_IDS`),
-  e.g. `probe.button("ok").withContext({ user: { id: adminId } }).click()`
-- invisibly inject the interaction's guild and channel first (see
+  e.g. `probe.button("ok").withContext({ user: { id: adminId } }).click()` –
+  or `.withContext({ dm: true, user })` for the user's DM with the bot
+  (`user` instead of `guild`/`member`, DM channel `DEFAULT_IDS.dmChannel`)
+- invisibly inject the interaction's guild and channel first, except in a DM (see
   `buildGuildCreateDispatch`) so `interaction.channel`/`interaction.guild`
   resolve for real – the same hidden discord.js rule as for gateway events
   (`../events/README.md`), here just for interactions

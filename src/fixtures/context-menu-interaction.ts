@@ -4,6 +4,7 @@ import {
   GatewayOpcodes,
   InteractionType,
   Locale,
+  type APIInteractionDataResolvedGuildMember,
   type APIMessageApplicationCommandInteraction,
   type APIUser,
   type APIUserApplicationCommandInteraction,
@@ -19,6 +20,11 @@ import { buildUser } from "./user.js";
 export interface UserContextMenuOverrides extends InteractionContextOverrides {
   /** The user the menu was opened on (default: `DEFAULT_IDS.user`). */
   target?: Partial<APIUser>;
+  /**
+   * The fields Discord sends for the target's guild member (e.g. `roles`) –
+   * discord.js puts them into the member cache. No member in a DM.
+   */
+  targetMember?: Partial<APIInteractionDataResolvedGuildMember>;
 }
 
 /** Fixture overrides for `buildMessageContextMenuInteractionDispatch`. */
@@ -29,7 +35,7 @@ export interface MessageContextMenuOverrides extends InteractionContextOverrides
 
 /** The fields every context menu interaction shares with a slash command – only `data` differs. */
 function baseInteraction(overrides: InteractionContextOverrides) {
-  const { channel, guild, member } = buildInteractionContext(overrides);
+  const { channel, origin } = buildInteractionContext(overrides);
   return {
     id: snowflake(),
     application_id: DEFAULT_IDS.application,
@@ -44,9 +50,7 @@ function baseInteraction(overrides: InteractionContextOverrides) {
     channel_id: channel.id,
     // same generic channel fixture as in `interaction.ts` – see the cast there
     channel: channel as APIUserApplicationCommandInteraction["channel"],
-    guild_id: guild.id,
-    guild,
-    member,
+    ...origin,
   };
 }
 
@@ -57,25 +61,27 @@ function dispatch(d: GatewayInteractionCreateDispatch["d"]): GatewayInteractionC
 /**
  * Builds a raw `INTERACTION_CREATE` gateway dispatch event for a user context
  * menu command ("Apps" → `name` on a user). Like on Discord, the target user
- * and their member come along under `resolved` – `interaction.targetUser`/
- * `targetMember` are real objects.
+ * and (in a guild) their member come along under `resolved` –
+ * `interaction.targetUser`/`targetMember` are real objects.
  */
 export function buildUserContextMenuInteractionDispatch(
   name: string,
   overrides: UserContextMenuOverrides = {},
 ): GatewayInteractionCreateDispatch {
+  const base = baseInteraction(overrides);
   const user = buildUser(overrides.target);
   // resolved members carry neither `user` nor `deaf`/`mute` (the user lives under `resolved.users`)
   const { roles, flags, joined_at, permissions } = buildMember();
+  const member = { roles, flags, joined_at, permissions, ...overrides.targetMember };
 
   return dispatch({
-    ...baseInteraction(overrides),
+    ...base,
     data: {
       id: DEFAULT_IDS.command,
       name,
       type: ApplicationCommandType.User,
       target_id: user.id,
-      resolved: { users: { [user.id]: user }, members: { [user.id]: { roles, flags, joined_at, permissions } } },
+      resolved: { users: { [user.id]: user }, ...("guild_id" in base ? { members: { [user.id]: member } } : {}) },
     },
   } satisfies APIUserApplicationCommandInteraction);
 }

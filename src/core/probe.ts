@@ -83,7 +83,7 @@ export interface Probe {
   exportTimeline(filePath: string): Promise<void>;
   /** Builds a slash command invocation (`.withOptions(...).invoke()`). Subcommands as in Discord: `"ticket close"`, `"ticket admin close"`. */
   slashCommand(name: string): SlashCommandInvocation;
-  /** Builds a context menu command (`.onUser(...)` / `.onMessage(...)`), e.g. `probe.contextMenu("Warn").onUser({ id: "42" })`. */
+  /** Builds a context menu command (`.onUser(...)` / `.onMessage(...)`), e.g. `probe.contextMenu("Warn").onUser({ id: "42" }, { roles: [modRoleId] })`. */
   contextMenu(name: string): ContextMenuInvocation;
   /**
    * Builds a button click (`.click()`) on the message the bot sent last
@@ -164,17 +164,18 @@ export function createProbe(client: Client): Probe {
    * (discord.js doesn't cache the channel otherwise, see
    * `src/events/README.md` for the same rule for gateway events). Only for
    * the fluent invocations (`slashCommand`/`button`/`selectMenu`/`modal`) –
-   * the raw `injectDispatch()` deliberately stays without seeding.
+   * the raw `injectDispatch()` deliberately stays without seeding. DM
+   * interactions (`withContext({ dm: true })`) seed nothing.
    */
   function injectInteraction(dispatch: GatewayInteractionCreateDispatch): void {
     const gateway = requireGateway();
     const { guild_id: guildId, channel } = dispatch.d;
-    gateway.injectDispatch(
-      buildGuildCreateDispatch({
-        ...(guildId ? { id: guildId } : {}),
-        ...(channel ? { channel: { id: channel.id, type: channel.type } } : {}),
-      }),
-    );
+    // a DM has no guild to seed – discord.js resolves the DM channel from the interaction itself
+    if (guildId) {
+      gateway.injectDispatch(
+        buildGuildCreateDispatch({ id: guildId, ...(channel ? { channel: { id: channel.id, type: channel.type } } : {}) }),
+      );
+    }
     gateway.injectDispatch(dispatch);
   }
 

@@ -1,4 +1,4 @@
-import type { APIUser, GatewayInteractionCreateDispatch } from "discord-api-types/v10";
+import type { APIInteractionDataResolvedGuildMember, APIUser, GatewayInteractionCreateDispatch } from "discord-api-types/v10";
 import {
   buildMessageContextMenuInteractionDispatch,
   buildUserContextMenuInteractionDispatch,
@@ -10,8 +10,12 @@ import type { MessageOverrides } from "../fixtures/message.js";
 export interface ContextMenuInvocation {
   /** Sets who opens the menu where (user, member, guild, channel). Returns itself, for chaining. */
   withContext(context: InteractionContextOverrides): ContextMenuInvocation;
-  /** Runs the menu as a user command on `target` and waits until the bot has responded at least once. */
-  onUser(target?: Partial<APIUser>): Promise<void>;
+  /**
+   * Runs the menu as a user command on `target` (with `targetMember` as the
+   * fields of their guild member, e.g. `{ roles }`) and waits until the bot
+   * has responded at least once.
+   */
+  onUser(target?: Partial<APIUser>, targetMember?: Partial<APIInteractionDataResolvedGuildMember>): Promise<void>;
   /** Runs the menu as a message command on `target` and waits until the bot has responded at least once. */
   onMessage(target?: MessageOverrides): Promise<void>;
 }
@@ -32,8 +36,14 @@ export function createContextMenuInvocation(
       context = newContext;
       return invocation;
     },
-    async onUser(target) {
-      inject(buildUserContextMenuInteractionDispatch(name, { ...context, ...(target ? { target } : {}) }));
+    async onUser(target, targetMember) {
+      inject(
+        buildUserContextMenuInteractionDispatch(name, {
+          ...context,
+          ...(target ? { target } : {}),
+          ...(targetMember ? { targetMember } : {}),
+        }),
+      );
       await waitForReply();
     },
     async onMessage(target) {
