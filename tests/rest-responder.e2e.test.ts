@@ -109,6 +109,29 @@ describe("REST responses", () => {
     await probe.teardown();
   });
 
+  it("restError(): a user-given Content-Type in any letter case doesn't break the JSON body", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.guild) return;
+      try {
+        await interaction.guild.channels.fetch("42");
+      } catch (error) {
+        await interaction.reply(error instanceof DiscordAPIError ? `failed: ${error.code}` : "unexpected error");
+      }
+    });
+    const probe = createProbe(client);
+    probe.respond("GET", /\/channels\/42$/, () =>
+      restError(404, { code: 10003, message: "Unknown Channel" }, { "Content-Type": "text/plain" }),
+    );
+    await probe.setup();
+
+    await probe.slashCommand("channel").invoke();
+
+    expect(probe.lastReply()?.content).toBe("failed: 10003");
+
+    await probe.teardown();
+  });
+
   it("restError(): a 5xx is an HTTPError after discord.js' retries", async () => {
     // retries: 0 – otherwise @discordjs/rest sends the call 3 more times first
     const client = new Client({ intents: [GatewayIntentBits.Guilds], rest: { retries: 0 } });

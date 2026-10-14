@@ -67,6 +67,9 @@ interface Route {
 
 function jsonResponse(status: number, data: unknown, headers: Record<string, string> = {}): ResponseLike {
   const text = JSON.stringify(data);
+  // the body is always JSON – `set` replaces a user-given content type in any letter case
+  const allHeaders = new Headers(headers);
+  allHeaders.set("content-type", "application/json");
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -74,7 +77,7 @@ function jsonResponse(status: number, data: unknown, headers: Record<string, str
     bodyUsed: false,
     body: null,
     // undici's `Headers` type differs from the global one only in its iterator typings
-    headers: new Headers({ ...headers, "content-type": "application/json" }) as unknown as ResponseLike["headers"],
+    headers: allHeaders as unknown as ResponseLike["headers"],
     json: async () => data,
     text: async () => text,
     arrayBuffer: async () => new TextEncoder().encode(text).buffer,
