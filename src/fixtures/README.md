@@ -23,7 +23,7 @@ Every builder:
 | `user.ts`                           | `buildUser`                                                        | `APIUser`                                 |
 | `guild.ts`                          | `buildGuild`                                                       | `APIPartialInteractionGuild`              |
 | `channel.ts`                        | `buildChannel`                                                     | Minimal channel payload (`id`, `type`)    |
-| `member.ts`                         | `buildMember`                                                      | `APIInteractionGuildMember`               |
+| `member.ts`                         | `buildMember`, `buildResolvedMember`                               | `APIInteractionGuildMember`, `APIInteractionDataResolvedGuildMember` (under `resolved.members`) |
 | `message.ts`                        | `buildMessage`                                                     | `APIMessage`                              |
 | `interaction-context.ts`            | `buildInteractionContext`, `buildInteractionBase`, `buildInteractionCreateDispatch` | Channel + origin (guild/member, or the DM user), the fields every interaction shares, the `INTERACTION_CREATE` wrapper |
 | `interaction.ts`                    | `buildSlashCommandInteractionDispatch`                             | `INTERACTION_CREATE` (slash command, incl. subcommands) |

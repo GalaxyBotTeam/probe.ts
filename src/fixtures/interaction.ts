@@ -12,7 +12,7 @@ import {
 } from "discord-api-types/v10";
 import { DEFAULT_IDS } from "./ids.js";
 import { buildInteractionBase, buildInteractionCreateDispatch, type InteractionContextOverrides } from "./interaction-context.js";
-import { buildMember } from "./member.js";
+import { buildResolvedMember } from "./member.js";
 import { buildUser } from "./user.js";
 
 /**
@@ -80,9 +80,7 @@ function toInteractionData(
     const user = buildUser(value.user);
     users[user.id] = user;
     if (inGuild) {
-      // resolved members carry neither `user` nor `deaf`/`mute` (the user lives under `resolved.users`)
-      const { roles, flags, joined_at, permissions } = buildMember();
-      members[user.id] = { roles, flags, joined_at, permissions, ...value.member };
+      members[user.id] = buildResolvedMember(value.member);
     }
     return { name, type: ApplicationCommandOptionType.User, value: user.id };
   });

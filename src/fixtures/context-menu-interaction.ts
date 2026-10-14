@@ -9,7 +9,7 @@ import {
 } from "discord-api-types/v10";
 import { DEFAULT_IDS } from "./ids.js";
 import { buildInteractionBase, buildInteractionCreateDispatch, type InteractionContextOverrides } from "./interaction-context.js";
-import { buildMember } from "./member.js";
+import { buildResolvedMember } from "./member.js";
 import { buildMessage, type MessageOverrides } from "./message.js";
 import { buildUser } from "./user.js";
 
@@ -53,9 +53,7 @@ export function buildUserContextMenuInteractionDispatch(
 ): GatewayInteractionCreateDispatch {
   const base = baseInteraction(overrides);
   const user = buildUser(overrides.target);
-  // resolved members carry neither `user` nor `deaf`/`mute` (the user lives under `resolved.users`)
-  const { roles, flags, joined_at, permissions } = buildMember();
-  const member = { roles, flags, joined_at, permissions, ...overrides.targetMember };
+  const member = buildResolvedMember(overrides.targetMember);
 
   return buildInteractionCreateDispatch({
     ...base,
