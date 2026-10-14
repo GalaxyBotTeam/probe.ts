@@ -50,6 +50,10 @@ export class RestErrorResponse {
  * A 429 needs a `Retry-After` header (seconds) – discord.js waits that long
  * and sends the call again, so let the responder fail only once (return
  * `undefined` afterwards), otherwise it retries forever.
+ *
+ * A 5xx is no `DiscordAPIError`: `@discordjs/rest` retries it
+ * (`rest.retries`, default 3) and then throws an `HTTPError` – pass
+ * `rest: { retries: 0 }` to the client to fail on the first call.
  */
 export function restError(status: number, body: unknown = {}, headers: Record<string, string> = {}): RestErrorResponse {
   return new RestErrorResponse(status, body, headers);

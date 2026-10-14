@@ -131,7 +131,7 @@ In a DM, `interaction.channel` is only set when the client has `partials: [Parti
 probe.respond("GET", /\/channels\/\d+$/, () => restError(404, { code: 10003, message: "Unknown Channel" }));
 ```
 
-The bot gets a real `DiscordAPIError`. For a 429, pass a `Retry-After` header and fail only once (return `undefined` on the next call) — discord.js waits and sends the call again.
+For a 4xx, the bot gets a real `DiscordAPIError`. For a 429, pass a `Retry-After` header and fail only once (return `undefined` on the next call) — discord.js waits and sends the call again. A 5xx is retried too (`rest.retries`, default 3) and then thrown as an `HTTPError`; create the client with `rest: { retries: 0 }` to get it on the first call.
 
 ## Debugging with the Timeline
 

@@ -5,6 +5,7 @@ import {
   Client,
   DiscordAPIError,
   GatewayIntentBits,
+  HTTPError,
   RESTEvents,
   type Message,
 } from "discord.js";
@@ -104,6 +105,28 @@ describe("REST responses", () => {
 
     expect(probe.lastReply()?.content).toBe("failed: 10003");
     expect(probe.timeline().find((entry) => entry.kind === "request")).toMatchObject({ status: 404 });
+
+    await probe.teardown();
+  });
+
+  it("restError(): a 5xx is an HTTPError after discord.js' retries", async () => {
+    // retries: 0 – otherwise @discordjs/rest sends the call 3 more times first
+    const client = new Client({ intents: [GatewayIntentBits.Guilds], rest: { retries: 0 } });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.guild) return;
+      try {
+        await interaction.guild.channels.fetch("42");
+      } catch (error) {
+        await interaction.reply(error instanceof HTTPError ? `failed: ${error.status}` : "unexpected error");
+      }
+    });
+    const probe = createProbe(client);
+    probe.respond("GET", /\/channels\/42$/, () => restError(500, { message: "Internal Server Error" }));
+    await probe.setup();
+
+    await probe.slashCommand("channel").invoke();
+
+    expect(probe.lastReply()?.content).toBe("failed: 500");
 
     await probe.teardown();
   });
