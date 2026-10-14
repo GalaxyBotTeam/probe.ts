@@ -84,11 +84,12 @@ All five:
   `buildGuildCreateDispatch`) so `interaction.channel`/`interaction.guild`
   resolve for real – the same hidden discord.js rule as for gateway events
   (`../events/README.md`), here just for interactions
-- then wait for at least one new REST call (`waitForNextRequest` in
-  `../core/probe.ts`) – unlike `Probe.emit()`/`injectDispatch()`, which
-  deliberately stay synchronous and leave waiting to the test code. The
-  difference is intentional: interactions are the core case we want to cover
-  with as little test boilerplate as possible.
+- then wait for at least one new REST call that didn't fail via
+  `restError()` (`waitForNextRequest` in `../core/probe.ts`) – unlike
+  `Probe.emit()`/`injectDispatch()`, which deliberately stay synchronous
+  and leave waiting to the test code. The difference is intentional:
+  interactions are the core case we want to cover with as little test
+  boilerplate as possible.
 
 ## `replies.ts`
 

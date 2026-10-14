@@ -156,10 +156,15 @@ export function createProbe(client: Client): Probe {
     return succeededRequests().map(parseModal).filter((modal): modal is ModalContent => modal !== undefined);
   }
 
-  /** Waits for at least one new REST call – shared base of every fluent invocation (slash command, button, select menu, modal). */
+  /**
+   * Waits for at least one new REST call Discord accepted – shared base of
+   * every fluent invocation (slash command, button, select menu, modal). Calls
+   * failed via `restError()` don't count: the bot's real answer (or the
+   * retry after a 429) is still to come.
+   */
   async function waitForNextRequest(): Promise<void> {
     const baseline = rest.requests.length;
-    await waitUntil(() => rest.requests.length > baseline);
+    await waitUntil(() => rest.requests.slice(baseline).some((request) => request.status < 400));
   }
 
   /**

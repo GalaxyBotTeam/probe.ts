@@ -122,11 +122,10 @@ describe("REST responses", () => {
     probe.respond("POST", /\/interactions\/.*\/callback$/, () => restError(404, { code: 10062, message: "Unknown interaction" }));
     await probe.setup();
 
+    // invoke() waits past the failed reply for the bot's channel.send()
     await probe.slashCommand("hi").invoke();
 
-    await vi.waitFor(() => {
-      expect(probe.capturedRequests()).toHaveLength(2);
-    });
+    expect(probe.capturedRequests()).toHaveLength(2);
     expect(probe.capturedRequests()[0]).toMatchObject({ status: 404 });
     expect(probe.lastReply()).toBeUndefined();
 
@@ -151,11 +150,10 @@ describe("REST responses", () => {
     });
     await probe.setup();
 
+    // invoke() waits past the 429 for the retried call
     await probe.slashCommand("send").invoke();
 
-    await vi.waitFor(() => {
-      expect(probe.capturedRequests()).toHaveLength(2);
-    });
+    expect(probe.capturedRequests()).toHaveLength(2);
     // the first 200 is `/gateway/bot` from setup()
     expect(statuses).toEqual([200, 429, 200]);
     expect((probe.capturedRequests()[1]?.body as { content?: string }).content).toBe("after the rate limit");
