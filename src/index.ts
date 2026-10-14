@@ -1,8 +1,15 @@
 export { createProbe, type Probe } from "./core/probe.js";
 export type { TimelineEntry, TimelineEvent } from "./core/timeline.js";
 export type { GatewayEventName, GatewayEventOverrides } from "./events/gateway-event.js";
-export type { CapturedRequest, RestResponder, RestResponderContext } from "./transport/rest-adapter.js";
+export {
+  restError,
+  type CapturedRequest,
+  type RestErrorResponse,
+  type RestResponder,
+  type RestResponderContext,
+} from "./transport/rest-adapter.js";
 export type { SlashCommandInvocation } from "./interactions/slash-command.js";
+export type { ContextMenuInvocation } from "./interactions/context-menu.js";
 export type { ButtonInvocation, SelectMenuInvocation } from "./interactions/message-component.js";
 export type { ModalSubmitInvocation } from "./interactions/modal.js";
 export { extractText, type ModalContent, type ReplyContent } from "./interactions/replies.js";
@@ -12,9 +19,10 @@ export { buildGuild } from "./fixtures/guild.js";
 export { buildChannel } from "./fixtures/channel.js";
 export { buildMember } from "./fixtures/member.js";
 export { buildMessage, type MessageOverrides } from "./fixtures/message.js";
-export type { InteractionContextOverrides } from "./fixtures/interaction-context.js";
+export type { InteractionContextOverrides, InteractionOrigin } from "./fixtures/interaction-context.js";
 export {
   buildSlashCommandInteractionDispatch,
+  type SlashCommandIntegerOptionValue,
   type SlashCommandInteractionOverrides,
   type SlashCommandOptionValues,
   type SlashCommandUserOptionValue,
@@ -25,6 +33,13 @@ export {
   type MessageComponentOverrides,
 } from "./fixtures/message-component-interaction.js";
 export { buildModalSubmitInteractionDispatch, type ModalSubmitOverrides } from "./fixtures/modal-interaction.js";
+export {
+  buildMessageContextMenuInteractionDispatch,
+  buildUserContextMenuInteractionDispatch,
+  type MessageContextMenuOverrides,
+  type UserContextMenuOverrides,
+} from "./fixtures/context-menu-interaction.js";
+export { buildGuildAuditLogEntryCreateDispatch, type AuditLogEntryOverrides } from "./fixtures/audit-log-events.js";
 export { buildGuildCreateDispatch, buildRole, type GuildCreateOverrides } from "./fixtures/guild-create.js";
 export {
   buildGuildMemberAddDispatch,

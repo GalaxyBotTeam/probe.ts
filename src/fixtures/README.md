@@ -23,22 +23,25 @@ Every builder:
 | `user.ts`                           | `buildUser`                                                        | `APIUser`                                 |
 | `guild.ts`                          | `buildGuild`                                                       | `APIPartialInteractionGuild`              |
 | `channel.ts`                        | `buildChannel`                                                     | Minimal channel payload (`id`, `type`)    |
-| `member.ts`                         | `buildMember`                                                      | `APIInteractionGuildMember`               |
+| `member.ts`                         | `buildMember`, `buildResolvedMember`                               | `APIInteractionGuildMember`, `APIInteractionDataResolvedGuildMember` (under `resolved.members`) |
 | `message.ts`                        | `buildMessage`                                                     | `APIMessage`                              |
-| `interaction-context.ts`            | `buildInteractionContext`                                          | Channel/guild/member – foundation of every interaction |
+| `interaction-context.ts`            | `buildInteractionContext`, `buildInteractionBase`, `buildInteractionCreateDispatch` | Channel + origin (guild/member, or the DM user), the fields every interaction shares, the `INTERACTION_CREATE` wrapper |
 | `interaction.ts`                    | `buildSlashCommandInteractionDispatch`                             | `INTERACTION_CREATE` (slash command, incl. subcommands) |
 | `message-component-interaction.ts`  | `buildButtonInteractionDispatch`, `buildSelectMenuInteractionDispatch` | `INTERACTION_CREATE` (button click, string select) |
 | `modal-interaction.ts`              | `buildModalSubmitInteractionDispatch`                              | `INTERACTION_CREATE` (modal submit)       |
+| `context-menu-interaction.ts`       | `buildUserContextMenuInteractionDispatch`, `buildMessageContextMenuInteractionDispatch` | `INTERACTION_CREATE` (user/message context menu, target under `resolved`) |
 | `guild-create.ts`                   | `buildGuildCreateDispatch`, `buildRole`                            | `GUILD_CREATE` – cache preparation (owner, `@everyone`, bot as admin member) |
 | `guild-member-events.ts`            | `buildGuildMemberAddDispatch`, `buildGuildMemberRemoveDispatch`    | `GUILD_MEMBER_ADD`/`_REMOVE`              |
 | `message-events.ts`                 | `buildMessageCreateDispatch`, `buildMessageDeleteDispatch`         | `MESSAGE_CREATE`/`_DELETE`                |
 | `reaction-events.ts`                | `buildMessageReactionAddDispatch`, `buildMessageReactionRemoveDispatch` | `MESSAGE_REACTION_ADD`/`_REMOVE` (unicode emoji only, no custom server emoji) |
+| `audit-log-events.ts`               | `buildGuildAuditLogEntryCreateDispatch`                            | `GUILD_AUDIT_LOG_ENTRY_CREATE`            |
 
 `interaction-context.ts` is the shared foundation for **every** interaction
-kind (slash command, button, select menu, modal submit): who triggered it,
-in which channel/guild. New interaction type? Check here first whether
-`buildInteractionContext` already suffices before building
-channel/guild/member by hand again.
+kind (slash command, button, select menu, modal submit, context menu): who
+triggered it, in which channel/guild. New interaction type? Start from
+`buildInteractionBase` (add `type`, `data` and the `channel` cast) and wrap
+it with `buildInteractionCreateDispatch` – don't copy the shared fields or
+build channel/guild/member by hand again.
 
 `message-component-interaction.ts` currently covers only string selects for
 select menus (by far the most common case) – user/role/mentionable/channel

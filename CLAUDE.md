@@ -140,6 +140,8 @@ Before every "works"/"done" claim: run `typecheck`, `test`, `lint` and
   currently only simple assertions on `lastReply()`/`allReplies()`/etc.
 - More select menu types (user/role/mentionable/channel select) – currently
   only string select (`src/fixtures/message-component-interaction.ts`)
+- More slash command option types (role/channel/mentionable/attachment) –
+  currently string/number/integer/boolean/user (`src/fixtures/interaction.ts`)
 - The fake REST layer doesn't return a `Message` for
   `interaction.reply({withResponse:true})` yet (`channel.send()`,
   `followUp()`, `editReply()` already do), see
@@ -148,9 +150,8 @@ Before every "works"/"done" claim: run `typecheck`, `test`, `lint` and
   up raw in `probe.capturedRequests()`)
 - Snapshot testing for embeds, time/timer control for collectors,
   permission/role simulation
-- npm release + announcement in the GalaxyBot community are still pending –
-  `package.json` deliberately stays at `version: "0.0.0"`, the real version
-  is set dynamically by `.github/workflows/release.yml` from the GitHub
-  release tag
+
+`package.json` deliberately stays at `version: "0.0.0"`; the real version is
+set dynamically by `.github/workflows/release.yml` from the GitHub release tag.
 
 User-facing version of the same list: `README.md` (section "Current Status").

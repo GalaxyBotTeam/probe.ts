@@ -1,5 +1,6 @@
 import type { GatewayDispatchPayload } from "discord-api-types/v10";
 import { DEFAULT_IDS } from "../fixtures/ids.js";
+import { buildGuildAuditLogEntryCreateDispatch, type AuditLogEntryOverrides } from "../fixtures/audit-log-events.js";
 import { buildGuildCreateDispatch } from "../fixtures/guild-create.js";
 import {
   buildGuildMemberAddDispatch,
@@ -29,6 +30,7 @@ export interface GatewayEventOverrides {
   messageDelete: MessageDeleteOverrides;
   messageReactionAdd: ReactionOverrides;
   messageReactionRemove: ReactionOverrides;
+  guildAuditLogEntryCreate: AuditLogEntryOverrides;
 }
 
 /** Builds the `MessageCreateOverrides` that seed the message behind a reaction – the same `id`/`channel`/`guildId` the reaction references. */
@@ -103,6 +105,10 @@ export function buildGatewayEventDispatches<K extends GatewayEventName>(
         buildMessageReactionAddDispatch(o),
         buildMessageReactionRemoveDispatch(o),
       ];
+    }
+    case "guildAuditLogEntryCreate": {
+      const o = (overrides ?? {}) as AuditLogEntryOverrides;
+      return [buildGuildCreateDispatch({ id: o.guildId ?? DEFAULT_IDS.guild }), buildGuildAuditLogEntryCreateDispatch(o)];
     }
     default:
       throw new Error(`probe.ts: unknown event name "${eventName as string}"`);

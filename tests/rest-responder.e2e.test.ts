@@ -1,6 +1,16 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, GatewayIntentBits, type Message } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  Client,
+  DiscordAPIError,
+  GatewayIntentBits,
+  HTTPError,
+  RESTEvents,
+  type Message,
+} from "discord.js";
 import { describe, expect, it, vi } from "vitest";
-import { createProbe, DEFAULT_IDS } from "../src/index.js";
+import { createProbe, DEFAULT_IDS, restError } from "../src/index.js";
 
 /**
  * Reference example for probe.ts's REST responses: routes Discord answers
@@ -73,6 +83,126 @@ describe("REST responses", () => {
     await probe.slashCommand("invites").invoke();
 
     expect(probe.lastReply()?.content).toBe("0 invites");
+
+    await probe.teardown();
+  });
+
+  it("restError(): the bot gets a real DiscordAPIError with Discord's code", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.guild) return;
+      try {
+        await interaction.guild.channels.fetch("42");
+      } catch (error) {
+        await interaction.reply(error instanceof DiscordAPIError ? `failed: ${error.code}` : "unexpected error");
+      }
+    });
+    const probe = createProbe(client);
+    probe.respond("GET", /\/channels\/42$/, () => restError(404, { code: 10003, message: "Unknown Channel" }));
+    await probe.setup();
+
+    await probe.slashCommand("channel").invoke();
+
+    expect(probe.lastReply()?.content).toBe("failed: 10003");
+    expect(probe.timeline().find((entry) => entry.kind === "request")).toMatchObject({ status: 404 });
+
+    await probe.teardown();
+  });
+
+  it("restError(): a user-given Content-Type in any letter case doesn't break the JSON body", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.guild) return;
+      try {
+        await interaction.guild.channels.fetch("42");
+      } catch (error) {
+        await interaction.reply(error instanceof DiscordAPIError ? `failed: ${error.code}` : "unexpected error");
+      }
+    });
+    const probe = createProbe(client);
+    probe.respond("GET", /\/channels\/42$/, () =>
+      restError(404, { code: 10003, message: "Unknown Channel" }, { "Content-Type": "text/plain" }),
+    );
+    await probe.setup();
+
+    await probe.slashCommand("channel").invoke();
+
+    expect(probe.lastReply()?.content).toBe("failed: 10003");
+
+    await probe.teardown();
+  });
+
+  it("restError(): a 5xx is an HTTPError after discord.js' retries", async () => {
+    // retries: 0 – otherwise @discordjs/rest sends the call 3 more times first
+    const client = new Client({ intents: [GatewayIntentBits.Guilds], rest: { retries: 0 } });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.guild) return;
+      try {
+        await interaction.guild.channels.fetch("42");
+      } catch (error) {
+        await interaction.reply(error instanceof HTTPError ? `failed: ${error.status}` : "unexpected error");
+      }
+    });
+    const probe = createProbe(client);
+    probe.respond("GET", /\/channels\/42$/, () => restError(500, { message: "Internal Server Error" }));
+    await probe.setup();
+
+    await probe.slashCommand("channel").invoke();
+
+    expect(probe.lastReply()?.content).toBe("failed: 500");
+
+    await probe.teardown();
+  });
+
+  it("restError(): a reply that failed doesn't count as a reply", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.channel?.isSendable()) return;
+      try {
+        await interaction.reply("hi");
+      } catch {
+        await interaction.channel.send("the interaction expired");
+      }
+    });
+    const probe = createProbe(client);
+    probe.respond("POST", /\/interactions\/.*\/callback$/, () => restError(404, { code: 10062, message: "Unknown interaction" }));
+    await probe.setup();
+
+    // invoke() waits past the failed reply for the bot's channel.send()
+    await probe.slashCommand("hi").invoke();
+
+    expect(probe.capturedRequests()).toHaveLength(2);
+    expect(probe.capturedRequests()[0]).toMatchObject({ status: 404 });
+    expect(probe.lastReply()).toBeUndefined();
+
+    await probe.teardown();
+  });
+
+  it("restError(): a one-time 429 makes discord.js wait for Retry-After and send the call again", async () => {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    const statuses: number[] = [];
+    client.on("interactionCreate", async (interaction) => {
+      if (!interaction.isChatInputCommand() || !interaction.channel?.isSendable()) return;
+      await interaction.channel.send("after the rate limit");
+    });
+    const probe = createProbe(client);
+    // after createProbe(): it replaces client.rest – the 429 is only visible on this event, like for real bots
+    client.rest.on(RESTEvents.Response, (_request, response) => statuses.push(response.status));
+    let limited = false;
+    probe.respond("POST", /\/channels\/\d+\/messages$/, () => {
+      if (limited) return undefined;
+      limited = true;
+      return restError(429, { message: "You are being rate limited.", retry_after: 0.01, global: false }, { "Retry-After": "0.01" });
+    });
+    await probe.setup();
+
+    // invoke() waits past the 429 for the retried call
+    await probe.slashCommand("send").invoke();
+
+    expect(probe.capturedRequests()).toHaveLength(2);
+    // the first 200 is `/gateway/bot` from setup()
+    expect(statuses).toEqual([200, 429, 200]);
+    expect((probe.capturedRequests()[1]?.body as { content?: string }).content).toBe("after the rate limit");
 
     await probe.teardown();
   });

@@ -1,6 +1,13 @@
-import { ApplicationCommandOptionType, ChannelType, InteractionType } from "discord-api-types/v10";
+import {
+  ApplicationCommandOptionType,
+  ChannelType,
+  InteractionContextType,
+  InteractionType,
+  type APIMessageApplicationCommandInteraction,
+} from "discord-api-types/v10";
 import { describe, expect, it } from "vitest";
 import { buildChannel } from "../src/fixtures/channel.js";
+import { buildMessageContextMenuInteractionDispatch } from "../src/fixtures/context-menu-interaction.js";
 import { buildGuild } from "../src/fixtures/guild.js";
 import { DEFAULT_IDS, snowflake } from "../src/fixtures/ids.js";
 import { buildSlashCommandInteractionDispatch } from "../src/fixtures/interaction.js";
@@ -46,6 +53,18 @@ describe("Fixture builders", () => {
     });
   });
 
+  it("buildSlashCommandInteractionDispatch: dm builds a DM interaction with user and DM channel", () => {
+    const interaction = buildSlashCommandInteractionDispatch("greet", { dm: true, user: { id: "42" }, guild: { id: "1" } }).d;
+    expect(interaction).toMatchObject({
+      context: InteractionContextType.BotDM,
+      user: { id: "42" },
+      channel_id: DEFAULT_IDS.dmChannel,
+      channel: { type: ChannelType.DM, recipients: [{ id: "42" }] },
+    });
+    expect(interaction).not.toHaveProperty("guild_id");
+    expect(interaction).not.toHaveProperty("member");
+  });
+
   it("buildSlashCommandInteractionDispatch: nests options into subcommand group and subcommand", () => {
     const interaction = buildSlashCommandInteractionDispatch("ticket admin close", { options: { reason: "spam" } }).d;
     if (!("data" in interaction) || interaction.type !== InteractionType.ApplicationCommand || !interaction.data) {
@@ -68,6 +87,20 @@ describe("Fixture builders", () => {
       ],
     });
     expect(() => buildSlashCommandInteractionDispatch("a b c d")).toThrow(/at most/);
+  });
+
+  it("buildSlashCommandInteractionDispatch: rejects an integer option that isn't an integer", () => {
+    expect(() => buildSlashCommandInteractionDispatch("timeout", { options: { days: { integer: 1.5 } } })).toThrow(
+      /"days".*isn't an integer/,
+    );
+  });
+
+  it("buildMessageContextMenuInteractionDispatch: a target channel override keeps the interaction's channel id", () => {
+    const { data } = buildMessageContextMenuInteractionDispatch("Report", {
+      dm: true,
+      target: { channel: { type: ChannelType.DM } },
+    }).d as APIMessageApplicationCommandInteraction;
+    expect(Object.values(data.resolved.messages)[0]?.channel_id).toBe(DEFAULT_IDS.dmChannel);
   });
 
   it("snowflake: unique, with a readable timestamp", () => {

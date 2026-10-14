@@ -1,15 +1,11 @@
 import {
   ComponentType,
-  GatewayDispatchEvents,
-  GatewayOpcodes,
   InteractionType,
-  Locale,
   type APIMessageComponentButtonInteraction,
   type APIMessageComponentSelectMenuInteraction,
   type GatewayInteractionCreateDispatch,
 } from "discord-api-types/v10";
-import { DEFAULT_IDS, snowflake } from "./ids.js";
-import { buildInteractionContext, type InteractionContextOverrides } from "./interaction-context.js";
+import { buildInteractionBase, buildInteractionCreateDispatch, type InteractionContextOverrides } from "./interaction-context.js";
 import { buildMessage } from "./message.js";
 
 /**
@@ -24,12 +20,12 @@ export interface MessageComponentOverrides extends InteractionContextOverrides {
 }
 
 function buildComponentInteractionBase(overrides: MessageComponentOverrides) {
-  const { channel, guild, member } = buildInteractionContext(overrides);
+  const base = buildInteractionBase(overrides);
   const message = buildMessage({
     ...(overrides.messageId ? { id: overrides.messageId } : {}),
-    ...(overrides.channel ? { channel: overrides.channel } : {}),
+    channel: { id: base.channel_id },
   });
-  return { channel, guild, member, message };
+  return { ...base, type: InteractionType.MessageComponent as const, message };
 }
 
 /**
@@ -40,37 +36,14 @@ export function buildButtonInteractionDispatch(
   customId: string,
   overrides: MessageComponentOverrides = {},
 ): GatewayInteractionCreateDispatch {
-  const { channel, guild, member, message } = buildComponentInteractionBase(overrides);
+  const base = buildComponentInteractionBase(overrides);
 
-  const interaction = {
-    id: snowflake(),
-    application_id: DEFAULT_IDS.application,
-    type: InteractionType.MessageComponent,
-    token: "interaction-token",
-    version: 1,
-    locale: Locale.EnglishUS,
-    app_permissions: "0",
-    entitlements: [],
-    authorizing_integration_owners: {},
-    attachment_size_limit: 26_214_400,
-    channel_id: channel.id,
-    // See interaction.ts: discord-api-types splits APIChannel by `type` into
-    // ~10 concrete channel interfaces; our fixture deliberately stays generic
-    // (discord.js only needs id/type).
-    channel: channel as APIMessageComponentButtonInteraction["channel"],
-    guild_id: guild.id,
-    guild,
-    member,
-    message,
+  return buildInteractionCreateDispatch({
+    ...base,
+    // see `buildInteractionBase` for the cast
+    channel: base.channel as APIMessageComponentButtonInteraction["channel"],
     data: { custom_id: customId, component_type: ComponentType.Button },
-  } satisfies APIMessageComponentButtonInteraction;
-
-  return {
-    op: GatewayOpcodes.Dispatch,
-    s: 1,
-    t: GatewayDispatchEvents.InteractionCreate,
-    d: interaction,
-  };
+  } satisfies APIMessageComponentButtonInteraction);
 }
 
 /**
@@ -88,32 +61,11 @@ export function buildSelectMenuInteractionDispatch(
   values: string[],
   overrides: MessageComponentOverrides = {},
 ): GatewayInteractionCreateDispatch {
-  const { channel, guild, member, message } = buildComponentInteractionBase(overrides);
+  const base = buildComponentInteractionBase(overrides);
 
-  const interaction = {
-    id: snowflake(),
-    application_id: DEFAULT_IDS.application,
-    type: InteractionType.MessageComponent,
-    token: "interaction-token",
-    version: 1,
-    locale: Locale.EnglishUS,
-    app_permissions: "0",
-    entitlements: [],
-    authorizing_integration_owners: {},
-    attachment_size_limit: 26_214_400,
-    channel_id: channel.id,
-    channel: channel as APIMessageComponentSelectMenuInteraction["channel"],
-    guild_id: guild.id,
-    guild,
-    member,
-    message,
+  return buildInteractionCreateDispatch({
+    ...base,
+    channel: base.channel as APIMessageComponentSelectMenuInteraction["channel"],
     data: { custom_id: customId, component_type: ComponentType.StringSelect, values },
-  } satisfies APIMessageComponentSelectMenuInteraction;
-
-  return {
-    op: GatewayOpcodes.Dispatch,
-    s: 1,
-    t: GatewayDispatchEvents.InteractionCreate,
-    d: interaction,
-  };
+  } satisfies APIMessageComponentSelectMenuInteraction);
 }

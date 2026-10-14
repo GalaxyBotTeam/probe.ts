@@ -1,4 +1,4 @@
-import { REST } from "@discordjs/rest";
+import type { REST } from "@discordjs/rest";
 import type { Client } from "discord.js";
 import type {
   ApplicationFlags,
@@ -9,6 +9,7 @@ import type {
 import { buildGatewayEventDispatches, type GatewayEventName, type GatewayEventOverrides } from "../events/gateway-event.js";
 import { buildGuildCreateDispatch } from "../fixtures/guild-create.js";
 import { DEFAULT_IDS } from "../fixtures/ids.js";
+import { createContextMenuInvocation, type ContextMenuInvocation } from "../interactions/context-menu.js";
 import { createButtonInvocation, createSelectMenuInvocation, type ButtonInvocation, type SelectMenuInvocation } from "../interactions/message-component.js";
 import { createModalSubmitInvocation, type ModalSubmitInvocation } from "../interactions/modal.js";
 import { parseModal, parseReply, type ModalContent, type ReplyContent } from "../interactions/replies.js";
@@ -82,6 +83,8 @@ export interface Probe {
   exportTimeline(filePath: string): Promise<void>;
   /** Builds a slash command invocation (`.withOptions(...).invoke()`). Subcommands as in Discord: `"ticket close"`, `"ticket admin close"`. */
   slashCommand(name: string): SlashCommandInvocation;
+  /** Builds a context menu command (`.onUser(...)` / `.onMessage(...)`), e.g. `probe.contextMenu("Warn").onUser({ id: "42" }, { roles: [modRoleId] })`. */
+  contextMenu(name: string): ContextMenuInvocation;
   /**
    * Builds a button click (`.click()`) on the message the bot sent last
    * (before the first one: `DEFAULT_IDS.message`) – so collectors bound to
@@ -95,14 +98,15 @@ export interface Probe {
    * path) – for routes where the bot expects a body, e.g.
    * `probe.respond("GET", /\/guilds\/\d+\/invites$/, () => [])`. Takes
    * precedence over the built-in message routes; without a matching route
-   * the response is an empty 204.
+   * the response is an empty 204. Return `restError(status, body)` to let
+   * the call fail like Discord would (404, 403, 429, ...).
    */
   respond(method: string, path: RegExp, responder: RestResponder): void;
   /** Builds a modal submit (`.withFields({...}).submit()`). */
   modal(customId: string): ModalSubmitInvocation;
-  /** The content of the reply sent last (`reply`/`editReply`), or `undefined` if none came yet. */
+  /** The content of the reply sent last (`reply`/`editReply`), or `undefined` if none came yet. Replies that failed via `restError()` don't count. */
   lastReply(): ReplyContent | undefined;
-  /** The contents of all replies sent so far, in order. */
+  /** The contents of all replies sent so far, in order – without the ones that failed via `restError()`. */
   allReplies(): ReplyContent[];
   /** The modal shown last via `interaction.showModal(...)`, or `undefined` if none came yet. */
   lastModal(): ModalContent | undefined;
@@ -118,7 +122,10 @@ export interface Probe {
 export function createProbe(client: Client): Probe {
   const timeline = new Timeline();
   const rest = new RestAdapter(timeline.record);
-  client.rest = new REST({ ...client.options.rest, makeRequest: rest.makeRequest });
+  // The client's own REST class, not our import: with ESM and CJS copies of @discordjs/rest
+  // side by side, `error instanceof DiscordAPIError` in bot code would fail otherwise.
+  const ClientREST = client.rest.constructor as typeof REST;
+  client.rest = new ClientREST({ ...client.options.rest, makeRequest: rest.makeRequest });
 
   let gateway: GatewayAdapter | undefined;
   client.options.ws = {
@@ -136,18 +143,28 @@ export function createProbe(client: Client): Probe {
     return gateway;
   }
 
+  /** Calls Discord accepted – a reply/modal that failed via `restError()` never reached the user. */
+  function succeededRequests(): CapturedRequest[] {
+    return rest.requests.filter((request) => request.status < 400);
+  }
+
   function allReplies(): ReplyContent[] {
-    return rest.requests.map(parseReply).filter((reply): reply is ReplyContent => reply !== undefined);
+    return succeededRequests().map(parseReply).filter((reply): reply is ReplyContent => reply !== undefined);
   }
 
   function allModals(): ModalContent[] {
-    return rest.requests.map(parseModal).filter((modal): modal is ModalContent => modal !== undefined);
+    return succeededRequests().map(parseModal).filter((modal): modal is ModalContent => modal !== undefined);
   }
 
-  /** Waits for at least one new REST call – shared base of every fluent invocation (slash command, button, select menu, modal). */
+  /**
+   * Waits for at least one new REST call Discord accepted – shared base of
+   * every fluent invocation (slash command, button, select menu, modal). Calls
+   * failed via `restError()` don't count: the bot's real answer (or the
+   * retry after a 429) is still to come.
+   */
   async function waitForNextRequest(): Promise<void> {
     const baseline = rest.requests.length;
-    await waitUntil(() => rest.requests.length > baseline);
+    await waitUntil(() => rest.requests.slice(baseline).some((request) => request.status < 400));
   }
 
   /**
@@ -157,17 +174,18 @@ export function createProbe(client: Client): Probe {
    * (discord.js doesn't cache the channel otherwise, see
    * `src/events/README.md` for the same rule for gateway events). Only for
    * the fluent invocations (`slashCommand`/`button`/`selectMenu`/`modal`) –
-   * the raw `injectDispatch()` deliberately stays without seeding.
+   * the raw `injectDispatch()` deliberately stays without seeding. DM
+   * interactions (`withContext({ dm: true })`) seed nothing.
    */
   function injectInteraction(dispatch: GatewayInteractionCreateDispatch): void {
     const gateway = requireGateway();
     const { guild_id: guildId, channel } = dispatch.d;
-    gateway.injectDispatch(
-      buildGuildCreateDispatch({
-        ...(guildId ? { id: guildId } : {}),
-        ...(channel ? { channel: { id: channel.id, type: channel.type } } : {}),
-      }),
-    );
+    // a DM has no guild to seed – like on Discord, `interaction.channel` then needs `Partials.Channel`
+    if (guildId) {
+      gateway.injectDispatch(
+        buildGuildCreateDispatch({ id: guildId, ...(channel ? { channel: { id: channel.id, type: channel.type } } : {}) }),
+      );
+    }
     gateway.injectDispatch(dispatch);
   }
 
@@ -209,6 +227,9 @@ export function createProbe(client: Client): Probe {
     },
     slashCommand(name) {
       return createSlashCommandInvocation(name, injectInteraction, waitForNextRequest);
+    },
+    contextMenu(name) {
+      return createContextMenuInvocation(name, injectInteraction, waitForNextRequest);
     },
     button(customId) {
       return createButtonInvocation(customId, injectInteraction, waitForNextRequest, () => rest.lastMessageId);

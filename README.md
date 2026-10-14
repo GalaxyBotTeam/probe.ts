@@ -13,11 +13,12 @@ probe.ts solves this at the transport layer instead: it fakes only the two bound
 
 ## Key Features
 
-- Test **Slash Commands** — including options, subcommands (groups), `deferReply()`/`editReply()`
-- Choose **who** triggers an interaction **where** with `withContext()` (user, member, guild, channel)
-- Answer REST calls your bot reads from (e.g. `GET` lists) with `probe.respond()`
+- Test **Slash Commands** — including string/number/integer/boolean/user options, subcommands (groups), `deferReply()`/`editReply()`
+- Choose **who** triggers an interaction **where** with `withContext()` (user, member, guild, channel — or the user's DM with `dm: true`)
+- Answer REST calls your bot reads from (e.g. `GET` lists) with `probe.respond()` — or let them fail like Discord would (404, 403, 429) with `restError()`
+- Test **Context Menu Commands** on users and messages with `probe.contextMenu()`
 - Test **Buttons**, **Select Menus**, and **Modals** — including discord.js's own collectors (`awaitMessageComponent()`, `awaitModalSubmit()`, ...)
-- Test **Gateway Events** — member join/leave, message create/delete, reactions, prefix commands
+- Test **Gateway Events** — member join/leave, message create/delete, reactions, audit log entries, prefix commands
 - Evaluate **Components V2 containers** with `extractText()` — no manual tree-walking
 - Export a **timeline** of every gateway event and REST call per test with `probe.exportTimeline()`
 - **Seamless integration** with discord.js — real model objects, no hand-written mocks
@@ -84,7 +85,7 @@ await vi.waitFor(() => {
 });
 ```
 
-Supports `guildMemberAdd`/`Remove`, `messageCreate`/`Delete`, and `messageReactionAdd`/`Remove`. Prefix commands (`!ping`) aren't a separate event — they're just a `messageCreate` with matching content. Full guide: [`docs/testing-event-handlers.md`](docs/testing-event-handlers.md).
+Supports `guildMemberAdd`/`Remove`, `messageCreate`/`Delete`, `messageReactionAdd`/`Remove`, and `guildAuditLogEntryCreate`. Prefix commands (`!ping`) aren't a separate event — they're just a `messageCreate` with matching content. Full guide: [`docs/testing-event-handlers.md`](docs/testing-event-handlers.md).
 
 ## Testing Message Components
 
@@ -97,6 +98,42 @@ expect(probe.lastModal()).toMatchObject({ customId: "feedback-modal" });
 ```
 
 Works with discord.js's own collectors too. Full guide: [`docs/testing-message-components.md`](docs/testing-message-components.md).
+
+## Testing Context Menus
+
+```ts
+await probe.contextMenu("Warn").onUser({ id: "42", username: "anna" }, { roles: [modRoleId] });
+await probe.contextMenu("Report").withContext({ user: { id: "7" } }).onMessage({ content: "spam" });
+```
+
+`interaction.targetUser`/`targetMember`/`targetMessage` are real discord.js objects. The second argument of `onUser()` sets what Discord sends for the target's guild member (e.g. `roles`).
+
+Complete example with a DM check and a Discord error: [`examples/report-bot/bot.ts`](examples/report-bot/bot.ts) + [`tests/report-bot.e2e.test.ts`](tests/report-bot.e2e.test.ts).
+
+## Options, Members and DMs
+
+```ts
+// a plain number is a number option; `{ integer }` an integer option (`options.getInteger()`)
+await probe.slashCommand("timeout").withOptions({ days: { integer: 3 }, factor: 1.5 }).invoke();
+
+// user option with the member Discord sends along – without `roles`, discord.js caches the member with none
+await probe.slashCommand("warn").withOptions({ target: { user: { id: "42" }, member: { roles: [modRoleId] } } }).invoke();
+
+// any interaction in the user's DM with the bot: `user` instead of guild/member, a DM channel
+await probe.button("rate-5").withContext({ dm: true, user: { id: "42" } }).click();
+```
+
+Roles must exist in the guild for `member.roles.cache` to list them — seed them first with `probe.injectDispatch(buildGuildCreateDispatch({ roles: [{ id: modRoleId }] }))`.
+
+In a DM, `interaction.channel` is only set when the client has `partials: [Partials.Channel]` — like on Discord, which sends no DM channel ahead of the interaction. Without it, `interaction.channelId` still holds the DM channel's id.
+
+## Testing Discord Errors
+
+```ts
+probe.respond("GET", /\/channels\/\d+$/, () => restError(404, { code: 10003, message: "Unknown Channel" }));
+```
+
+For a 4xx, the bot gets a real `DiscordAPIError`. For a 429, pass a `Retry-After` header and fail only once (return `undefined` on the next call) — discord.js waits and sends the call again. A 5xx is retried too (`rest.retries`, default 3) and then thrown as an `HTTPError`; create the client with `rest: { retries: 0 }` to get it on the first call.
 
 ## Debugging with the Timeline
 
@@ -149,9 +186,9 @@ probe.ts works with discord.js v14+. You can integrate it without modifying your
 
 ## Current Status
 
-**Implemented:** Slash Commands (incl. user options and subcommands/groups), Buttons/Select Menus (string-select)/Modals with collectors, per-interaction user/guild/channel via `withContext()`, real `Message` responses for `channel.send()`/`followUp()`/`editReply()` plus custom REST responses via `probe.respond()`, the gateway events listed above, Components V2 container evaluation, a per-probe timeline via `probe.timeline()`/`exportTimeline()`.
+**Implemented:** Slash Commands (incl. string/number/integer/boolean/user options with their member, and subcommands/groups), Buttons/Select Menus (string-select)/Modals with collectors, per-interaction user/guild/channel or DM via `withContext()`, Context Menu Commands (user and message), real `Message` responses for `channel.send()`/`followUp()`/`editReply()` plus custom REST responses and Discord errors via `probe.respond()`/`restError()`, the gateway events listed above, Components V2 container evaluation, a per-probe timeline via `probe.timeline()`/`exportTimeline()`.
 
-**Not yet supported:** custom Vitest matchers, other select-menu types (user/role/mentionable/channel), a `Message` from `interaction.reply({ withResponse: true })`, `followUp()` in `lastReply()`/`allReplies()` (it only shows up in `capturedRequests()`), embed snapshot testing, timer control for collectors, permission/role simulation.
+**Not yet supported:** custom Vitest matchers, role/channel/mentionable/attachment slash command options, other select-menu types (user/role/mentionable/channel), a `Message` from `interaction.reply({ withResponse: true })`, `followUp()` in `lastReply()`/`allReplies()` (it only shows up in `capturedRequests()`), embed snapshot testing, timer control for collectors, permission/role simulation.
 
 ## Use Cases
 

@@ -1,10 +1,11 @@
-import { ChannelType } from "discord-api-types/v10";
+import { ChannelType, type APIUser } from "discord-api-types/v10";
 import { DEFAULT_IDS } from "./ids.js";
 
-/** The `channel` payload of an interaction – discord.js only needs `id` + `type`. */
+/** The `channel` payload of an interaction – discord.js only needs `id` + `type` (plus `recipients` for a DM). */
 export interface ChannelFixture {
   id: string;
   type: ChannelType;
+  recipients?: APIUser[];
 }
 
 /**
