@@ -82,6 +82,12 @@ describe("Fixture builders", () => {
     expect(() => buildSlashCommandInteractionDispatch("a b c d")).toThrow(/at most/);
   });
 
+  it("buildSlashCommandInteractionDispatch: rejects an integer option that isn't an integer", () => {
+    expect(() => buildSlashCommandInteractionDispatch("timeout", { options: { days: { integer: 1.5 } } })).toThrow(
+      /"days".*isn't an integer/,
+    );
+  });
+
   it("snowflake: unique, with a readable timestamp", () => {
     const at = Date.UTC(2026, 0, 1);
     const ids = new Set([snowflake(at), snowflake(at), snowflake(at)]);

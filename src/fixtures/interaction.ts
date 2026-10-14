@@ -75,6 +75,9 @@ function toInteractionData(
       return { name, type: ApplicationCommandOptionType.String, value };
     }
     if ("integer" in value) {
+      if (!Number.isInteger(value.integer)) {
+        throw new Error(`probe.ts: option "${name}" – { integer: ${value.integer} } isn't an integer, Discord never sends that`);
+      }
       return { name, type: ApplicationCommandOptionType.Integer, value: value.integer };
     }
     const user = buildUser(value.user);
