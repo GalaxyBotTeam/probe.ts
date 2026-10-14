@@ -97,7 +97,7 @@ export function buildMessageContextMenuInteractionDispatch(
   overrides: MessageContextMenuOverrides = {},
 ): GatewayInteractionCreateDispatch {
   const base = baseInteraction(overrides);
-  const message = buildMessage({ channel: { id: base.channel_id }, ...overrides.target });
+  const message = buildMessage({ ...overrides.target, channel: { id: base.channel_id, ...overrides.target?.channel } });
 
   return dispatch({
     ...base,

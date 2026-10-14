@@ -1,6 +1,13 @@
-import { ApplicationCommandOptionType, ChannelType, InteractionContextType, InteractionType } from "discord-api-types/v10";
+import {
+  ApplicationCommandOptionType,
+  ChannelType,
+  InteractionContextType,
+  InteractionType,
+  type APIMessageApplicationCommandInteraction,
+} from "discord-api-types/v10";
 import { describe, expect, it } from "vitest";
 import { buildChannel } from "../src/fixtures/channel.js";
+import { buildMessageContextMenuInteractionDispatch } from "../src/fixtures/context-menu-interaction.js";
 import { buildGuild } from "../src/fixtures/guild.js";
 import { DEFAULT_IDS, snowflake } from "../src/fixtures/ids.js";
 import { buildSlashCommandInteractionDispatch } from "../src/fixtures/interaction.js";
@@ -86,6 +93,14 @@ describe("Fixture builders", () => {
     expect(() => buildSlashCommandInteractionDispatch("timeout", { options: { days: { integer: 1.5 } } })).toThrow(
       /"days".*isn't an integer/,
     );
+  });
+
+  it("buildMessageContextMenuInteractionDispatch: a target channel override keeps the interaction's channel id", () => {
+    const { data } = buildMessageContextMenuInteractionDispatch("Report", {
+      dm: true,
+      target: { channel: { type: ChannelType.DM } },
+    }).d as APIMessageApplicationCommandInteraction;
+    expect(Object.values(data.resolved.messages)[0]?.channel_id).toBe(DEFAULT_IDS.dmChannel);
   });
 
   it("snowflake: unique, with a readable timestamp", () => {
